@@ -1,0 +1,17 @@
+rules_version = '2';
+
+// SECURE FIRESTORE RULES
+// Architecture: Strict Server-Mediated Access Model
+// All client operations (submissions, queries, shortlisting, authentication) are mediated
+// exclusively by the trusted Next.js backend using the Firebase Admin SDK.
+// Direct client SDK reads and writes to all collections are strictly denied.
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Deny all direct client-side reads and writes across all collections
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
