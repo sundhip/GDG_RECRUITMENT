@@ -1,6 +1,7 @@
 "use client";
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import UserButton from "./UserButton";
 import GDGLogo from "./GDGLogo";
@@ -31,8 +32,18 @@ const NavBar = () => {
       <div className="h-0.5 w-full bg-gradient-to-r from-[#4285F4] via-[#EA4335] via-[#F4B400] to-[#0F9D58]" />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-        <div className="flex items-center gap-5 sm:gap-6">
+        <div className="flex items-center gap-3 sm:gap-5">
           <GDGLogo subtitle="VIT Chennai · Recruitments 2026" size="md" />
+
+          <div className="hidden xl:flex items-center bg-white px-2 py-0.5 rounded-md shadow-xs border border-white/20">
+            <Image
+              src="/assets/images/vit-chennai-logo.png"
+              alt="VIT Chennai"
+              width={90}
+              height={24}
+              className="h-4 w-auto object-contain"
+            />
+          </div>
 
           {formattedTimeDisplay && (
             <div className="hidden lg:flex items-center gap-1.5 text-xs text-slate-400 bg-slate-900/80 border border-slate-800/80 px-3 py-1 rounded-full">

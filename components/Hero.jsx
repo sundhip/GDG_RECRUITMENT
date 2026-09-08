@@ -20,14 +20,27 @@ export default function Hero({ onOpenNotice }) {
 
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center relative z-10">
         {/* Campus & Community Badges */}
-        <div className="flex flex-wrap items-center justify-center gap-3 mb-8">
-          <div className="inline-flex items-center gap-2.5 px-4 py-1.5 rounded-full bg-slate-900/90 border border-slate-800 shadow-xl backdrop-blur-md">
-            <GDGEmblem className="w-5 h-3" />
-            <span className="text-xs font-semibold text-slate-200">
-              GDG on Campus · VIT Chennai
-            </span>
-            <span className="h-3 w-px bg-slate-700" />
-            <span className="text-xs font-medium text-blue-400">
+        <div className="flex flex-wrap items-center justify-center gap-3.5 mb-8">
+          <div className="inline-flex items-center gap-3 px-3.5 py-1.5 rounded-full bg-slate-900/90 border border-slate-800 shadow-xl backdrop-blur-md">
+            <div className="bg-white px-2 py-0.5 rounded-md flex items-center justify-center shadow-sm">
+              <Image
+                src="/assets/images/vit-chennai-logo.png"
+                alt="VIT Chennai"
+                width={110}
+                height={32}
+                className="h-5 sm:h-6 w-auto object-contain"
+                priority
+              />
+            </div>
+            <span className="h-4 w-px bg-slate-700" />
+            <div className="inline-flex items-center gap-1.5">
+              <GDGEmblem className="w-4 h-2.5" />
+              <span className="text-xs font-semibold text-slate-200">
+                GDG on Campus
+              </span>
+            </div>
+            <span className="hidden sm:inline h-3 w-px bg-slate-700" />
+            <span className="hidden sm:inline text-xs font-medium text-blue-400">
               Technical Recruitment 2026
             </span>
           </div>
@@ -36,7 +49,7 @@ export default function Hero({ onOpenNotice }) {
             <button
               type="button"
               onClick={onOpenNotice}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-blue-950/60 hover:bg-blue-900/60 border border-blue-800/60 text-blue-300 text-xs font-semibold transition-all hover:scale-105"
+              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-blue-950/60 hover:bg-blue-900/60 border border-blue-800/60 text-blue-300 text-xs font-semibold transition-all hover:scale-105 shadow-md"
             >
               <BellRing className="w-3.5 h-3.5 text-blue-400" />
               <span>Recruitment Notice</span>
@@ -141,6 +154,35 @@ export default function Hero({ onOpenNotice }) {
                 Contribute to workshops, hackathons, and open source initiatives that impact campus life.
               </p>
             </div>
+          </div>
+        </div>
+
+        {/* Official Campus Accreditation Card */}
+        <div className="mt-12 flex flex-col sm:flex-row items-center justify-between gap-4 p-4 sm:p-5 rounded-2xl bg-slate-900/60 border border-slate-800/80 backdrop-blur-md text-left">
+          <div className="flex items-center gap-4">
+            <div className="bg-white px-3.5 py-1.5 rounded-xl shadow-sm flex items-center justify-center shrink-0">
+              <Image
+                src="/assets/images/vit-chennai-logo.png"
+                alt="Vellore Institute of Technology, Chennai"
+                width={140}
+                height={40}
+                className="h-7 sm:h-8 w-auto object-contain"
+              />
+            </div>
+            <div>
+              <div className="text-xs sm:text-sm font-semibold text-slate-200">
+                Official Student Community Chapter · VIT Chennai
+              </div>
+              <p className="text-[11px] sm:text-xs text-slate-400 mt-0.5">
+                Google Developer Groups on Campus is an officially recognized technical club fostering innovation and peer learning.
+              </p>
+            </div>
+          </div>
+          <div className="shrink-0 flex items-center gap-2">
+            <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1 rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/25">
+              <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse" />
+              Recruitment 2026 Live
+            </span>
           </div>
         </div>
       </div>
