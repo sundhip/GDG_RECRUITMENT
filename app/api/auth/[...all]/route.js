@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { createSessionToken, verifySessionToken } from "@/lib/session-helper";
+import { isWhitelistedAdminEmail } from "@/lib/admin-auth";
 
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || "";
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || "";
@@ -60,31 +61,40 @@ export async function GET(request) {
         return NextResponse.redirect(new URL("/auth/signin?error=profile_fetch_failed", request.url));
       }
 
+      const email = profile.email.toLowerCase().trim();
+      const isAdmin = isWhitelistedAdminEmail(email);
+
       const user = {
         id: profile.id || "google_" + Date.now(),
-        name: profile.name || profile.email.split("@")[0],
-        email: profile.email.toLowerCase(),
+        name: profile.name || email.split("@")[0],
+        email,
         image: profile.picture || "",
-        role: "user",
+        role: isAdmin ? "admin" : "user",
       };
 
       const sessionToken = createSessionToken(user);
 
-      const targetUrl = new URL(state.startsWith("/") ? state : "/", request.url);
+      // Determine clean target URL
+      let targetPath = state && state.startsWith("/") ? state : "/";
+      if (targetPath === "/auth/signin" || targetPath === "/auth/signin/") {
+        targetPath = isAdmin ? "/admin" : "/";
+      } else if (targetPath.startsWith("/admin") && !isAdmin) {
+        targetPath = "/admin/login";
+      }
+
+      const targetUrl = new URL(targetPath, request.url);
       const response = NextResponse.redirect(targetUrl);
 
-      response.cookies.set("session_token", sessionToken, {
+      const cookieOptions = {
         path: "/",
         httpOnly: true,
         sameSite: "lax",
+        secure: process.env.NODE_ENV === "production",
         maxAge: 604800,
-      });
-      response.cookies.set("better-auth.session_token", sessionToken, {
-        path: "/",
-        httpOnly: true,
-        sameSite: "lax",
-        maxAge: 604800,
-      });
+      };
+
+      response.cookies.set("session_token", sessionToken, cookieOptions);
+      response.cookies.set("better-auth.session_token", sessionToken, cookieOptions);
 
       return response;
     } catch (err) {
@@ -99,28 +109,43 @@ export async function GET(request) {
     const cookies = parseCookies(cookieHeader);
     const token = cookies["session_token"] || cookies["better-auth.session_token"];
 
+    const noCacheHeaders = {
+      "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
+      Pragma: "no-cache",
+      Expires: "0",
+    };
+
     if (token) {
       const user = verifySessionToken(token);
       if (user) {
-        return NextResponse.json({
-          user,
-          session: {
-            id: user.id,
-            userId: user.id,
-            expiresAt: new Date(Date.now() + 7 * 86400000).toISOString(),
+        if (isWhitelistedAdminEmail(user.email)) {
+          user.role = "admin";
+        }
+        return NextResponse.json(
+          {
+            user,
+            session: {
+              id: user.id,
+              userId: user.id,
+              expiresAt: new Date(Date.now() + 7 * 86400000).toISOString(),
+            },
           },
-        });
+          { headers: noCacheHeaders }
+        );
       }
     }
 
     try {
       const session = await auth.api.getSession({ headers: request.headers });
       if (session?.user) {
-        return NextResponse.json(session);
+        if (isWhitelistedAdminEmail(session.user.email)) {
+          session.user.role = "admin";
+        }
+        return NextResponse.json(session, { headers: noCacheHeaders });
       }
     } catch (e) {}
 
-    return NextResponse.json(null);
+    return NextResponse.json(null, { headers: noCacheHeaders });
   }
 
   // Pass through to Better-Auth handler
