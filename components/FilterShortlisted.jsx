@@ -20,7 +20,7 @@ import {
     PopoverTrigger,
 } from "@/components/ui/popover";
 
-let frameworks = [
+const SHORTLIST_OPTIONS = [
     {
         value: "true",
         label: "Yes",
@@ -45,7 +45,7 @@ export default function FilterShortlisted({ filterFunc }) {
                     className="w-[200px] justify-between"
                 >
                     {value ? (
-                        frameworks.find(
+                        SHORTLIST_OPTIONS.find(
                             (framework) => framework.value === value
                         )?.label
                     ) : (
@@ -63,7 +63,7 @@ export default function FilterShortlisted({ filterFunc }) {
                     <CommandList>
                         <CommandEmpty>No value found.</CommandEmpty>
                         <CommandGroup>
-                            {frameworks.map((framework) => (
+                            {SHORTLIST_OPTIONS.map((framework) => (
                                 <CommandItem
                                     key={framework.value}
                                     value={framework.value}

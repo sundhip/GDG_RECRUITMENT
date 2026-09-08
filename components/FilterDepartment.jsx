@@ -22,24 +22,16 @@ import {
     PopoverTrigger,
 } from "@/components/ui/popover";
 
-let frameworks = [];
-
-reviews.forEach(
-    (r, index) =>
-        (frameworks[index] = {
-            value: r.name,
-            label: r.name,
-        })
-);
-
-frameworks.push({
-    value: "Video Editing",
-    label: "Video Editing",
-});
-
 export default function FilterDepartment({ filterFunc }) {
     const [open, setOpen] = React.useState(false);
     const [value, setValue] = React.useState("");
+
+    const frameworks = React.useMemo(() => {
+        return reviews.map((r) => ({
+            value: r.name,
+            label: r.name,
+        }));
+    }, []);
 
     return (
         <Popover open={open} onOpenChange={setOpen}>
