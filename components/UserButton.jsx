@@ -76,13 +76,15 @@ export default function UserButton({ user }) {
           <Shield className="w-3.5 h-3.5 text-emerald-400" />
           <span>My Passport</span>
         </DropdownMenuItem>
-        <DropdownMenuItem
-          onClick={() => router.push("/admin")}
-          className="text-slate-300 focus:text-white focus:bg-slate-800 cursor-pointer flex items-center gap-2 text-xs"
-        >
-          <Shield className="w-3.5 h-3.5 text-purple-400" />
-          <span>Admin Console</span>
-        </DropdownMenuItem>
+        {isAdmin && (
+          <DropdownMenuItem
+            onClick={() => router.push("/admin")}
+            className="text-slate-300 focus:text-white focus:bg-slate-800 cursor-pointer flex items-center gap-2 text-xs"
+          >
+            <Shield className="w-3.5 h-3.5 text-purple-400" />
+            <span>Admin Console</span>
+          </DropdownMenuItem>
+        )}
         <DropdownMenuSeparator className="bg-slate-800" />
         <DropdownMenuItem
           onClick={handleSignOut}

@@ -306,11 +306,11 @@ export default function AdminContent({
           <form onSubmit={handleUnlockAdmin} className="space-y-4 text-left">
             <div className="space-y-1.5">
               <label className="text-xs font-semibold text-slate-300">
-                Administrative Passkey
+                Staff Administrative Passkey
               </label>
               <Input
                 type="password"
-                placeholder="Enter passkey (e.g. gdg2026admin)"
+                placeholder="Enter authorized passkey"
                 value={passkeyInput}
                 onChange={(e) => setPasskeyInput(e.target.value)}
                 className="bg-slate-950 border-slate-700 text-slate-100 focus:border-blue-500 h-11 rounded-xl text-sm"
@@ -325,24 +325,27 @@ export default function AdminContent({
               {isUnlocking ? (
                 <>
                   <div className="w-4 h-4 rounded-full border-2 border-white border-t-transparent animate-spin" />
-                  <span>Verifying Passkey...</span>
+                  <span>Verifying Authorization...</span>
                 </>
               ) : (
                 <>
                   <ShieldCheck className="w-4 h-4" />
-                  <span>Authenticate as Admin</span>
+                  <span>Authenticate Staff Access</span>
                 </>
               )}
             </Button>
           </form>
 
-          <div className="pt-2 border-t border-slate-800/80">
-            <p className="text-[11px] text-slate-500">
-              Default development passkey:{" "}
-              <code className="text-blue-400 font-mono bg-blue-950/40 px-1.5 py-0.5 rounded border border-blue-900/50">
-                gdg2026admin
-              </code>
+          <div className="pt-3 border-t border-slate-800/80 flex flex-col items-center gap-2">
+            <p className="text-[11px] text-slate-400">
+              Are you a student applicant?
             </p>
+            <Link
+              href="/passport"
+              className="text-xs text-emerald-400 hover:text-emerald-300 font-medium hover:underline inline-flex items-center gap-1"
+            >
+              <span>Go to My Application Passport &rarr;</span>
+            </Link>
           </div>
         </div>
       </div>

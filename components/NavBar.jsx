@@ -69,7 +69,7 @@ const NavBar = () => {
             </Link>
           )}
 
-          {isAuthenticated && (
+          {isAdmin && (
             <Link
               href="/admin"
               className={"flex items-center gap-1.5 text-xs sm:text-sm font-medium px-3 py-1.5 rounded-xl transition-all focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none " + (
@@ -80,11 +80,9 @@ const NavBar = () => {
             >
               <LayoutDashboard className="w-4 h-4 text-purple-400" />
               <span>Admin Portal</span>
-              {isAdmin && (
-                <span className="text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.2 rounded bg-purple-600/30 text-purple-300 border border-purple-500/30">
-                  Staff
-                </span>
-              )}
+              <span className="text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.2 rounded bg-purple-600/30 text-purple-300 border border-purple-500/30">
+                Staff
+              </span>
             </Link>
           )}
 

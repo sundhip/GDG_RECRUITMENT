@@ -8,8 +8,7 @@ const footerLinks = [
   { name: "Home", path: "/" },
   { name: "Technical Departments", path: "/departments" },
   { name: "Application Passport", path: "/passport" },
-  { name: "Candidate Sign In", path: "/auth/signin" },
-  { name: "Recruitment Portal", path: "/admin" },
+  { name: "Candidate Portal", path: "/auth/signin" },
 ];
 
 const currentYear = new Date().getFullYear();
