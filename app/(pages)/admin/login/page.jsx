@@ -145,102 +145,171 @@ function AdminLoginContent() {
               </div>
             )}
 
-            {/* Google Sign In Option for Whitelisted Staff */}
-            <div className="flex flex-col gap-2">
-              <GoogleSignInButton
-                text="Sign in with Staff Google Account"
-                callbackURL={redirectTarget}
-              />
-
-              <div className="relative my-2">
-                <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-slate-800" />
-                </div>
-                <div className="relative flex justify-center text-[11px] uppercase">
-                  <span className="bg-slate-900 px-3 text-slate-400 font-medium tracking-wider">
-                    or authenticate with staff passkey
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* Passkey Authentication Form */}
-            <form onSubmit={handlePasskeyLogin} className="flex flex-col gap-3.5">
-              <div className="flex flex-col gap-1.5">
-                <Label htmlFor="staff-name" className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
-                  <User className="w-3.5 h-3.5 text-slate-400" />
-                  <span>Reviewer / Lead Name <span className="text-slate-500 font-normal">(optional)</span></span>
-                </Label>
-                <Input
-                  id="staff-name"
-                  type="text"
-                  placeholder="e.g. Lead Coordinator"
-                  value={staffName}
-                  onChange={(e) => setStaffName(e.target.value)}
-                  className="bg-slate-950/60 border-slate-800 text-slate-100 placeholder:text-slate-500 rounded-xl h-11 text-sm focus:border-purple-500 focus:ring-1 focus:ring-purple-500"
-                />
-              </div>
-
-              <div className="flex flex-col gap-1.5">
-                <Label htmlFor="staff-email" className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
-                  <Mail className="w-3.5 h-3.5 text-slate-400" />
-                  <span>Staff Email <span className="text-slate-500 font-normal">(optional)</span></span>
-                </Label>
-                <Input
-                  id="staff-email"
-                  type="email"
-                  placeholder="recruiter@gdg.org"
-                  value={staffEmail}
-                  onChange={(e) => setStaffEmail(e.target.value)}
-                  className="bg-slate-950/60 border-slate-800 text-slate-100 placeholder:text-slate-500 rounded-xl h-11 text-sm focus:border-purple-500 focus:ring-1 focus:ring-purple-500"
-                />
-              </div>
-
-              <div className="flex flex-col gap-1.5">
-                <Label htmlFor="admin-passkey" className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
-                  <Lock className="w-3.5 h-3.5 text-purple-400" />
-                  <span>Administrative Passkey <span className="text-red-400">*</span></span>
-                </Label>
-                <div className="relative flex items-center">
-                  <Input
-                    id="admin-passkey"
-                    type={showPasskey ? "text" : "password"}
-                    placeholder="Enter authorized passkey"
-                    value={passkey}
-                    onChange={(e) => setPasskey(e.target.value)}
-                    required
-                    className="bg-slate-950/60 border-slate-800 text-slate-100 placeholder:text-slate-500 rounded-xl h-11 text-sm pr-10 focus:border-purple-500 focus:ring-1 focus:ring-purple-500"
-                  />
+            {/* Case 1: Google account already signed in but not yet staff admin */}
+            {user && !isAdmin ? (
+              <div className="space-y-4">
+                <div className="p-4 rounded-2xl bg-purple-950/40 border border-purple-800/60 flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-purple-600/20 border border-purple-500/40 flex items-center justify-center text-purple-300 font-bold shrink-0">
+                    <User className="w-5 h-5" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-bold text-white truncate">
+                      {user.name || "Signed in User"}
+                    </p>
+                    <p className="text-[11px] text-purple-300/80 font-mono truncate">
+                      {user.email}
+                    </p>
+                  </div>
                   <button
                     type="button"
-                    onClick={() => setShowPasskey(!showPasskey)}
-                    tabIndex={-1}
-                    className="absolute right-3 text-slate-400 hover:text-slate-200 transition-colors"
+                    onClick={() => authClient.signOut()}
+                    className="text-[11px] text-slate-400 hover:text-red-300 underline shrink-0"
                   >
-                    {showPasskey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    Switch
                   </button>
                 </div>
-              </div>
 
-              <Button
-                type="submit"
-                disabled={submitting}
-                className="w-full mt-1 bg-purple-600 hover:bg-purple-500 text-white font-semibold py-3 h-11 rounded-xl shadow-lg shadow-purple-950 gap-2 transition-all disabled:opacity-50"
-              >
-                {submitting ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    <span>Verifying Credentials...</span>
-                  </>
-                ) : (
-                  <>
-                    <ShieldCheck className="w-4 h-4" />
-                    <span>Access Admin Console</span>
-                    <ArrowRight className="w-4 h-4 ml-auto" />
-                  </>
-                )}
-              </Button>
-            </form>
+                <div className="space-y-1 text-center">
+                  <p className="text-xs text-slate-300 font-medium">
+                    This account requires staff authorization to access the Admin Console.
+                  </p>
+                  <p className="text-[11px] text-slate-400">
+                    Enter the GDG administrative passkey below to activate admin privileges:
+                  </p>
+                </div>
+
+                <form onSubmit={handlePasskeyLogin} className="space-y-3.5">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="admin-passkey" className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
+                      <Lock className="w-3.5 h-3.5 text-purple-400" />
+                      <span>Staff Passkey</span>
+                    </Label>
+                    <div className="relative flex items-center">
+                      <Input
+                        id="admin-passkey"
+                        type={showPasskey ? "text" : "password"}
+                        placeholder="Enter authorized staff passkey"
+                        value={passkey}
+                        onChange={(e) => setPasskey(e.target.value)}
+                        required
+                        className="bg-slate-950/80 border-slate-700 text-slate-100 rounded-xl h-11 text-sm pr-10 focus:border-purple-500"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPasskey(!showPasskey)}
+                        tabIndex={-1}
+                        className="absolute right-3 text-slate-400 hover:text-slate-200"
+                      >
+                        {showPasskey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
+                  </div>
+
+                  <Button
+                    type="submit"
+                    disabled={submitting}
+                    className="w-full bg-purple-600 hover:bg-purple-500 text-white font-semibold h-11 rounded-xl shadow-lg shadow-purple-950 gap-2"
+                  >
+                    {submitting ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        <span>Authorizing...</span>
+                      </>
+                    ) : (
+                      <>
+                        <ShieldCheck className="w-4 h-4" />
+                        <span>Authorize Admin Privileges &rarr;</span>
+                      </>
+                    )}
+                  </Button>
+                </form>
+              </div>
+            ) : (
+              /* Case 2: Unauthenticated staff visitor */
+              <div className="space-y-5">
+                {/* Google Sign In Option */}
+                <div className="space-y-2">
+                  <GoogleSignInButton
+                    text="Sign in with Staff Google Account"
+                    callbackURL={redirectTarget}
+                  />
+
+                  <div className="relative my-2">
+                    <div className="absolute inset-0 flex items-center">
+                      <div className="w-full border-t border-slate-800" />
+                    </div>
+                    <div className="relative flex justify-center text-[11px] uppercase">
+                      <span className="bg-slate-900 px-3 text-slate-400 font-medium tracking-wider">
+                        or authenticate with passkey
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Passkey Authentication Form */}
+                <form onSubmit={handlePasskeyLogin} className="flex flex-col gap-3.5">
+                  <div className="flex flex-col gap-1.5">
+                    <Label htmlFor="staff-name" className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
+                      <User className="w-3.5 h-3.5 text-slate-400" />
+                      <span>Reviewer / Lead Name <span className="text-slate-500 font-normal">(optional)</span></span>
+                    </Label>
+                    <Input
+                      id="staff-name"
+                      type="text"
+                      placeholder="e.g. Lead Coordinator"
+                      value={staffName}
+                      onChange={(e) => setStaffName(e.target.value)}
+                      className="bg-slate-950/60 border-slate-800 text-slate-100 placeholder:text-slate-500 rounded-xl h-11 text-sm focus:border-purple-500"
+                    />
+                  </div>
+
+                  <div className="flex flex-col gap-1.5">
+                    <Label htmlFor="admin-passkey" className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
+                      <Lock className="w-3.5 h-3.5 text-purple-400" />
+                      <span>Administrative Passkey <span className="text-red-400">*</span></span>
+                    </Label>
+                    <div className="relative flex items-center">
+                      <Input
+                        id="admin-passkey"
+                        type={showPasskey ? "text" : "password"}
+                        placeholder="Enter authorized passkey"
+                        value={passkey}
+                        onChange={(e) => setPasskey(e.target.value)}
+                        required
+                        className="bg-slate-950/60 border-slate-800 text-slate-100 placeholder:text-slate-500 rounded-xl h-11 text-sm pr-10 focus:border-purple-500"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPasskey(!showPasskey)}
+                        tabIndex={-1}
+                        className="absolute right-3 text-slate-400 hover:text-slate-200 transition-colors"
+                      >
+                        {showPasskey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
+                  </div>
+
+                  <Button
+                    type="submit"
+                    disabled={submitting}
+                    className="w-full mt-1 bg-purple-600 hover:bg-purple-500 text-white font-semibold py-3 h-11 rounded-xl shadow-lg shadow-purple-950 gap-2 transition-all disabled:opacity-50"
+                  >
+                    {submitting ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        <span>Verifying Credentials...</span>
+                      </>
+                    ) : (
+                      <>
+                        <ShieldCheck className="w-4 h-4" />
+                        <span>Access Admin Console</span>
+                        <ArrowRight className="w-4 h-4 ml-auto" />
+                      </>
+                    )}
+                  </Button>
+                </form>
+              </div>
+            )}
 
             {/* Candidate Portal Redirection Notice */}
             <div className="p-3.5 rounded-2xl bg-slate-950/60 border border-slate-800/80 text-center space-y-1">
