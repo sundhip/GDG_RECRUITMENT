@@ -9,6 +9,7 @@ const footerLinks = [
   { name: "Technical Departments", path: "/departments" },
   { name: "Application Passport", path: "/passport" },
   { name: "Candidate Portal", path: "/auth/signin" },
+  { name: "Staff & Recruiter Portal", path: "/admin/login" },
 ];
 
 const currentYear = new Date().getFullYear();

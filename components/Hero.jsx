@@ -3,7 +3,7 @@
 import React from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { ArrowRight, Sparkles, Compass, CheckCircle2, ShieldCheck, BellRing, Code2, Users, Rocket } from "lucide-react";
+import { ArrowRight, Sparkles, Compass, CheckCircle2, ShieldCheck, BellRing, Code2, Users, Rocket, LayoutDashboard } from "lucide-react";
 import { Button } from "./ui/button";
 import { GDGEmblem } from "./GDGLogo";
 import { authClient } from "@/lib/auth-client";
@@ -58,11 +58,11 @@ export default function Hero({ onOpenNotice }) {
         </p>
 
         {/* Call to action buttons */}
-        <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
+        <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4">
           <Link href="/departments" className="w-full sm:w-auto">
             <Button
               size="lg"
-              className="w-full sm:w-auto bg-blue-600 hover:bg-blue-500 text-white font-semibold px-8 h-12 rounded-2xl shadow-lg shadow-blue-900/40 gap-2 transition-all active:scale-[0.98]"
+              className="w-full sm:w-auto bg-blue-600 hover:bg-blue-500 text-white font-semibold px-7 h-12 rounded-2xl shadow-lg shadow-blue-900/40 gap-2 transition-all active:scale-[0.98]"
             >
               <span>Explore Departments</span>
               <ArrowRight className="w-4 h-4" />
@@ -74,7 +74,7 @@ export default function Hero({ onOpenNotice }) {
               <Button
                 size="lg"
                 variant="outline"
-                className="w-full sm:w-auto border-slate-800 bg-slate-900/80 hover:bg-slate-800 text-slate-200 h-12 px-7 rounded-2xl backdrop-blur-md transition-all gap-2"
+                className="w-full sm:w-auto border-slate-800 bg-slate-900/80 hover:bg-slate-800 text-slate-200 h-12 px-6 rounded-2xl backdrop-blur-md transition-all gap-2"
               >
                 <Sparkles className="w-4 h-4 text-blue-400" />
                 <span>Candidate Portal</span>
@@ -85,13 +85,24 @@ export default function Hero({ onOpenNotice }) {
               <Button
                 size="lg"
                 variant="outline"
-                className="w-full sm:w-auto border-emerald-800/80 bg-emerald-950/40 hover:bg-emerald-900/40 text-emerald-300 h-12 px-7 rounded-2xl backdrop-blur-md transition-all gap-2"
+                className="w-full sm:w-auto border-emerald-800/80 bg-emerald-950/40 hover:bg-emerald-900/40 text-emerald-300 h-12 px-6 rounded-2xl backdrop-blur-md transition-all gap-2"
               >
                 <ShieldCheck className="w-4 h-4 text-emerald-400" />
                 <span>My Application Passport</span>
               </Button>
             </Link>
           )}
+
+          <Link href="/admin/login" className="w-full sm:w-auto">
+            <Button
+              size="lg"
+              variant="outline"
+              className="w-full sm:w-auto border-purple-900/60 bg-purple-950/40 hover:bg-purple-900/50 text-purple-300 hover:text-white h-12 px-5 rounded-2xl backdrop-blur-md transition-all gap-2"
+            >
+              <LayoutDashboard className="w-4 h-4 text-purple-400" />
+              <span>Staff Portal</span>
+            </Button>
+          </Link>
         </div>
 
         {/* Community Pillars / Highlights */}

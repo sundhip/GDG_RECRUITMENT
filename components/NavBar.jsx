@@ -69,18 +69,30 @@ const NavBar = () => {
             </Link>
           )}
 
-          {isAdmin && (
+          {!isAdmin ? (
             <Link
-              href="/admin"
-              className={"flex items-center gap-1.5 text-xs sm:text-sm font-medium px-3 py-1.5 rounded-xl transition-all focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none " + (
+              href="/admin/login"
+              className={"flex items-center gap-1.5 text-xs sm:text-sm font-medium px-2.5 py-1.5 rounded-xl transition-all focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:outline-none " + (
                 pathname.startsWith("/admin")
                   ? "bg-purple-600/20 text-purple-300 border border-purple-500/40 shadow-sm"
-                  : "text-slate-300 hover:text-white hover:bg-slate-800/60"
+                  : "text-purple-300/80 hover:text-purple-200 hover:bg-purple-950/40 border border-purple-900/40"
+              )}
+            >
+              <LayoutDashboard className="w-3.5 h-3.5 text-purple-400" />
+              <span>Staff Portal</span>
+            </Link>
+          ) : (
+            <Link
+              href="/admin"
+              className={"flex items-center gap-1.5 text-xs sm:text-sm font-medium px-3 py-1.5 rounded-xl transition-all focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:outline-none " + (
+                pathname === "/admin" || pathname.startsWith("/admin/review") || pathname.startsWith("/admin/compare")
+                  ? "bg-purple-600/25 text-purple-200 border border-purple-500/50 shadow-sm"
+                  : "text-purple-300 hover:text-white hover:bg-purple-900/40 border border-purple-800/60"
               )}
             >
               <LayoutDashboard className="w-4 h-4 text-purple-400" />
-              <span>Admin Portal</span>
-              <span className="text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.2 rounded bg-purple-600/30 text-purple-300 border border-purple-500/30">
+              <span>Admin Console</span>
+              <span className="text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.2 rounded bg-purple-600/40 text-purple-200 border border-purple-400/40">
                 Staff
               </span>
             </Link>

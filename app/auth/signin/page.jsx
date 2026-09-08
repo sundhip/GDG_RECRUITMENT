@@ -350,6 +350,19 @@ function SignInContent() {
               </p>
             </div>
 
+            {/* Staff & Admin Switch Prompt */}
+            <div className="p-3 rounded-2xl bg-slate-950/60 border border-slate-800/80 text-center space-y-1">
+              <p className="text-xs text-slate-400">
+                Are you a GDG Recruiter or Staff Lead?
+              </p>
+              <Link
+                href="/admin/login"
+                className="inline-flex items-center gap-1 text-xs text-purple-400 hover:text-purple-300 font-semibold hover:underline"
+              >
+                <span>Access Staff & Admin Portal &rarr;</span>
+              </Link>
+            </div>
+
             {/* Security Badge */}
             <div className="flex items-center justify-center gap-2 text-[11px] text-slate-500 bg-slate-950/40 py-2 rounded-xl border border-slate-800/50">
               <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
