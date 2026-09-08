@@ -1,10 +1,12 @@
 "use client";
+
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { authClient } from "@/lib/auth-client";
 import { Button } from "./ui/button";
 import { toast } from "sonner";
 import { FileEdit, ArrowRight, Trash2, Clock, Sparkles } from "lucide-react";
+import { findDepartment } from "@/constants/recruitment/departments";
 
 export default function DraftResumeBanner() {
   const { data: session, isPending } = authClient.useSession();
@@ -32,47 +34,51 @@ export default function DraftResumeBanner() {
             const parsed = JSON.parse(raw);
             const values = parsed?.values || {};
             const submittedDepts = parsed?.submittedDepartments || [];
+            const updatedAt = parsed?.updatedAt || parsed?.timestamp;
 
-            // Extract department names from key
+            // Extract department identifiers from key
             const parts = key.split(":");
             const deptsString = parts.slice(2).join(":");
-            const depts = deptsString ? deptsString.split("|") : [];
+            const rawDepts = deptsString ? deptsString.split("|") : [];
 
-            // Check if any departments in this draft are still unsubmitted
-            const pendingDepts = depts.filter((d) => !submittedDepts.includes(d));
-
-            // Count answered fields
-            let answeredCount = 0;
-            let totalFields = 4; // Name, Reg, Phone, WhyJoin
-            if (values.Name) answeredCount++;
-            if (values.RegistrationNumber) answeredCount++;
-            if (values.Phone) answeredCount++;
-            if (values["Why do you want to join Organization Name?"]) answeredCount++;
-
-            Object.keys(values).forEach((k) => {
-              if (
-                ![
-                  "Name",
-                  "RegistrationNumber",
-                  "Email",
-                  "Phone",
-                  "Gender",
-                  "Year of Study",
-                  "Why do you want to join Organization Name?",
-                ].includes(k) &&
-                values[k]
-              ) {
-                answeredCount++;
-                totalFields++;
-              }
+            // Resolve clean department names and canonical IDs
+            const resolvedDepts = rawDepts.map((d) => {
+              const deptObj = findDepartment(d);
+              return {
+                id: deptObj?.id || d,
+                name: deptObj?.name || d,
+              };
             });
 
+            // Check if any departments in this draft are still unsubmitted
+            const pendingDepts = resolvedDepts.filter(
+              (d) => !submittedDepts.includes(d.name) && !submittedDepts.includes(d.id)
+            );
+
+            // Calculate answered fields count
+            const totalTracked = Object.keys(values).length;
+            const answeredCount = Object.values(values).filter(
+              (v) => v !== null && v !== undefined && String(v).trim().length > 0
+            ).length;
+
             if (pendingDepts.length > 0 && answeredCount > 0) {
-              const percent = Math.min(100, Math.round((answeredCount / totalFields) * 100));
+              const percent = Math.min(100, Math.max(10, Math.round((answeredCount / Math.max(6, totalTracked)) * 100)));
+              
+              let timeAgo = "recently";
+              if (updatedAt) {
+                const diffMins = Math.round((Date.now() - new Date(updatedAt).getTime()) / 60000);
+                if (diffMins < 1) timeAgo = "just now";
+                else if (diffMins === 1) timeAgo = "1 minute ago";
+                else if (diffMins < 60) timeAgo = `${diffMins} minutes ago`;
+              }
+
               foundDraft = {
                 key,
                 departments: pendingDepts,
+                deptNames: pendingDepts.map((d) => d.name),
+                deptIds: pendingDepts.map((d) => d.id),
                 percent,
+                timeAgo,
                 name: values.Name || "Applicant",
               };
               break;
@@ -90,11 +96,12 @@ export default function DraftResumeBanner() {
 
   const handleContinue = () => {
     if (!activeDraft) return;
-    const depts = activeDraft.departments;
-    const query = new URLSearchParams();
-    if (depts[0]) query.set("dept1", depts[0]);
-    if (depts[1]) query.set("dept2", depts[1]);
-    router.push(`/join?${query.toString()}`);
+    const ids = activeDraft.deptIds;
+    if (ids.length) {
+      router.push(`/join/${ids.join("/")}`);
+    } else {
+      router.push("/departments");
+    }
   };
 
   const handleDiscard = () => {
@@ -115,27 +122,30 @@ export default function DraftResumeBanner() {
       aria-label="Resume Draft Notice"
       className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 my-4"
     >
-      <div className="p-4 rounded-xl bg-gradient-to-r from-blue-950/80 via-slate-900/90 to-indigo-950/80 border border-blue-500/30 shadow-lg flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+      <div className="p-4 rounded-2xl bg-gradient-to-r from-blue-950/80 via-slate-900/90 to-indigo-950/80 border border-blue-500/30 shadow-lg flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div className="flex items-center gap-3.5">
-          <div className="w-10 h-10 rounded-lg bg-blue-600/20 border border-blue-500/40 flex items-center justify-center text-blue-400 shrink-0">
+          <div className="w-10 h-10 rounded-xl bg-blue-600/20 border border-blue-500/40 flex items-center justify-center text-blue-400 shrink-0">
             <FileEdit className="w-5 h-5" />
           </div>
           <div className="space-y-0.5">
             <div className="flex items-center gap-2">
               <span className="text-xs font-bold text-slate-100 flex items-center gap-1">
                 <Sparkles className="w-3.5 h-3.5 text-blue-400" />
-                Unsaved Application in Progress
+                Application in Progress
               </span>
               <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-blue-900/60 text-blue-200 border border-blue-700">
                 {activeDraft.percent}% Complete
               </span>
+              <span className="text-[11px] text-slate-400 hidden sm:inline flex items-center gap-1">
+                · Last saved {activeDraft.timeAgo}
+              </span>
             </div>
             <p className="text-xs text-slate-300">
-              You have an unfinished application for{" "}
+              Continue your{" "}
               <span className="font-semibold text-blue-300">
-                {activeDraft.departments.join(" & ")}
-              </span>
-              . Continue where you left off.
+                {activeDraft.deptNames.join(" + ")}
+              </span>{" "}
+              application for GDG on Campus · VIT Chennai.
             </p>
           </div>
         </div>
@@ -155,9 +165,9 @@ export default function DraftResumeBanner() {
             type="button"
             size="sm"
             onClick={handleContinue}
-            className="bg-blue-600 hover:bg-blue-500 text-white text-xs h-8 px-3 gap-1.5 shadow-md"
+            className="bg-blue-600 hover:bg-blue-500 text-white text-xs h-8 px-3.5 gap-1.5 shadow-md shadow-blue-900/30"
           >
-            <span>Continue</span>
+            <span>Continue Application</span>
             <ArrowRight className="w-3.5 h-3.5" />
           </Button>
         </div>

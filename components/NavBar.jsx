@@ -32,7 +32,7 @@ const NavBar = () => {
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
         <div className="flex items-center gap-5 sm:gap-6">
-          <GDGLogo subtitle="Technical Recruitments 2026" size="md" />
+          <GDGLogo subtitle="VIT Chennai · Recruitments 2026" size="md" />
 
           {formattedTimeDisplay && (
             <div className="hidden lg:flex items-center gap-1.5 text-xs text-slate-400 bg-slate-900/80 border border-slate-800/80 px-3 py-1 rounded-full">

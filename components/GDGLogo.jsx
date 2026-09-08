@@ -27,7 +27,7 @@ export function GDGEmblem({ className = "w-10 h-6", animated = false }) {
 
 export default function GDGLogo({
   showSubtitle = true,
-  subtitle = "Recruitments 2026",
+  subtitle = "on Campus · VIT Chennai",
   size = "md",
   href = "/",
 }) {
@@ -62,7 +62,7 @@ export default function GDGLogo({
       <GDGEmblem className={sizeClasses.emblem} />
       <div className="flex flex-col leading-tight">
         <div className={"tracking-tight text-white flex items-center gap-1.5 " + sizeClasses.title}>
-          <span>Google Developer Groups</span>
+          <span>GDG on Campus</span>
         </div>
         {showSubtitle && (
           <span className={"text-slate-400 group-hover:text-blue-400 transition-colors tracking-wide " + sizeClasses.subtitle}>

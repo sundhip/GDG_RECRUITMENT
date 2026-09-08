@@ -1,4 +1,4 @@
-﻿import {
+import {
   generateSubmissionId,
   generateApplicantId,
   resolveDepartment,
@@ -54,7 +54,7 @@ console.log("TEST 1: One applicant -> one department");
   assert(submission.submissionId === "sub_alice_example_com_339f0f8a_72f2_44b9_92ab_2b0d4dcfa0f6", "Canonical submissionId generated deterministically");
   assert(submission.applicantId === "alice@example.com", "Stable applicantId is email");
   assert(submission.departmentId === deptId, "Department ID matches reviews catalog");
-  assert(submission.departmentName === "∑_ApZ3V_gh", "Department name resolved correctly");
+  assert(submission.departmentName === "App Development", "Department name resolved correctly");
   assert(submission.answers.length === 3, "All 3 answers stored");
   assert(submission.responseCount === 3, "responseCount metadata matches answers length");
   assert(submission.questionIds.includes("q_app_01"), "questionId q_app_01 tracked in questionIds");

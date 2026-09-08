@@ -7,12 +7,13 @@ import PopupComp from "@/components/PopupComp";
 import DraftResumeBanner from "@/components/DraftResumeBanner";
 
 const popupConfig = {
-  header: "Recruitment Notice",
-  description: "Welcome to the GDG Recruitment Portal.",
+  header: "GDG on Campus · VIT Chennai",
+  description: "Welcome to Technical Recruitment 2026 for student developers.",
   message: [
-    "Sign in with your student Google or email credentials to begin your application.",
-    "You can select and apply to up to two technical departments.",
-    "Draft responses are automatically saved in real-time as you type.",
+    "Sign in with your student Google or email account to start your recruitment journey.",
+    "Choose up to 2 technical departments that match your interests or what you want to learn.",
+    "Beginners are warmly welcomed — we value curiosity, reasoning, and problem solving over prior perfection.",
+    "Your application progress is automatically saved to your device in real-time as you type.",
   ],
 };
 

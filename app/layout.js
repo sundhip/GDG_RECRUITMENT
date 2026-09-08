@@ -8,12 +8,11 @@ import { SubmissionsProvider } from "@/components/SubmissionsProvider";
 import "./globals.css";
 
 export const metadata = {
-  title: "GDG Recruitment Portal",
-  description: "Official GDG Recruitment Portal",
+  title: "GDG on Campus · VIT Chennai | Technical Recruitment 2026",
+  description:
+    "Official Technical Recruitment 2026 Portal for Google Developer Groups on Campus at VIT Chennai — Learn, Build, Collaborate, Contribute, Grow.",
   icons: {
-    icon: [
-      { url: "/icon.svg", type: "image/svg+xml" },
-    ],
+    icon: [{ url: "/icon.svg", type: "image/svg+xml" }],
   },
 };
 

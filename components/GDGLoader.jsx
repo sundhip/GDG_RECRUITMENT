@@ -3,7 +3,7 @@
 import React from "react";
 import { GDGEmblem } from "@/components/GDGLogo";
 
-const DWASFWLoader = ({ message = "Loading GDG Portal..." }) => {
+export const GDGLoader = ({ message = "Loading GDG on Campus · VIT Chennai Portal..." }) => {
   return (
     <div className="min-h-[50vh] w-full flex flex-col items-center justify-center p-6 bg-background text-foreground animate-in fade-in duration-300">
       <div className="relative flex flex-col items-center gap-5 p-8 rounded-3xl bg-slate-900/60 border border-slate-800/80 backdrop-blur-xl shadow-2xl max-w-sm w-full text-center">
@@ -20,7 +20,7 @@ const DWASFWLoader = ({ message = "Loading GDG Portal..." }) => {
 
         <div className="flex flex-col items-center gap-2 relative z-10">
           <h3 className="text-sm font-bold text-slate-100 tracking-tight flex items-center gap-1.5">
-            <span>Google Developer Groups</span>
+            <span>GDG on Campus · VIT Chennai</span>
           </h3>
           <p className="text-xs text-slate-400 font-medium animate-pulse">
             {message}
@@ -39,4 +39,5 @@ const DWASFWLoader = ({ message = "Loading GDG Portal..." }) => {
   );
 };
 
-export default DWASFWLoader;
+export const DWASFWLoader = GDGLoader;
+export default GDGLoader;

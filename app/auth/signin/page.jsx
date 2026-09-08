@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { authClient } from "@/lib/auth-client";
 import { toast } from "sonner";
-import DWASFWLoader from "@/components/GDGLoader";
+import GDGLoader, { DWASFWLoader } from "@/components/GDGLoader";
 import GoogleSignInButton from "@/components/GoogleSignInButton";
 import { GDGEmblem } from "@/components/GDGLogo";
 import {

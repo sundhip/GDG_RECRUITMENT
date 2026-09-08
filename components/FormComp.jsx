@@ -16,15 +16,25 @@ import {
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Textarea } from "./ui/textarea";
-import { QuestionnaireData } from "@/constants";
+import {
+  WHY_GDG_QUESTIONS,
+  TECHNICAL_INTEREST_QUESTIONS,
+  DEPARTMENT_QUESTIONNAIRES,
+  PROJECT_QUESTIONS,
+  REFLECTION_QUESTIONS,
+  findDepartment,
+  QuestionnaireData,
+} from "@/constants";
 import { useRouter } from "next/navigation";
 import { authClient } from "@/lib/auth-client";
 import { toast } from "sonner";
 import { useSubmissions } from "@/components/SubmissionsProvider";
 import {
   User,
-  FileText,
+  Heart,
+  Compass,
   Layers,
+  FolderGit2,
   CheckSquare,
   CheckCircle2,
   ArrowRight,
@@ -37,16 +47,9 @@ import {
   Send,
   Home,
   Lightbulb,
-  HelpCircle,
   AlertTriangle,
-  ChevronDown,
-  ChevronUp,
+  ExternalLink,
 } from "lucide-react";
-
-const normaliseQuestion = (question) =>
-  typeof question === "string"
-    ? { name: question, type: "generic", placeholder: "2-3 sentences" }
-    : question;
 
 const normalizeDeptName = (str) =>
   str ? str.trim().toLowerCase().replace(/\s*\/\s*/g, "/") : "";
@@ -57,23 +60,30 @@ const FormComp = ({ dept1, dept2, isLoading, setIsLoading }) => {
   const isSignedIn = Boolean(user);
   const isLoaded = !isPending;
 
-  const [currentStep, setCurrentStep] = useState(1); // 1: Personal, 2: General, 3: Dept, 4: Review, 5: Success
+  // Step 1: Personal, Step 2: Why GDG, Step 3: Tech Interests, Step 4: Dept Questions, Step 5: Projects, Step 6: Review & Reflection, Step 7: Receipt
+  const [currentStep, setCurrentStep] = useState(1);
   const [errorMessage, setErrorMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submittedDepartments, setSubmittedDepartments] = useState([]);
   const [isDraftReady, setIsDraftReady] = useState(false);
   const [confirmedPledge, setConfirmedPledge] = useState(true);
   const [submissionReceipts, setSubmissionReceipts] = useState([]);
+  const [expandedHelp, setExpandedHelp] = useState({});
 
   const router = useRouter();
   const { submittedDepartments: contextSubmitted, markDepartmentsSubmitted } =
     useSubmissions();
   const debounceTimerRef = useRef(null);
 
+  const selectedDepartmentObjects = useMemo(() => {
+    return [dept1, dept2]
+      .filter(Boolean)
+      .map((d) => (typeof d === "string" ? findDepartment(d) || { name: d, id: d } : d));
+  }, [dept1, dept2]);
+
   const departmentNames = useMemo(
-    () =>
-      [dept1, dept2].filter(Boolean).map((d) => (typeof d === "string" ? d : d.name)),
-    [dept1, dept2]
+    () => selectedDepartmentObjects.map((d) => d.name),
+    [selectedDepartmentObjects]
   );
 
   const draftKey =
@@ -81,40 +91,21 @@ const FormComp = ({ dept1, dept2, isLoading, setIsLoading }) => {
       ? `recruitment-draft:${user.email}:${[...departmentNames].sort().join("|")}`
       : null;
 
-  // Resolve questionnaire questions for the selected departments
+  // Resolve questions per department
   const deptQuestionsMap = useMemo(() => {
     const map = {};
-    departmentNames.forEach((dept) => {
-      const qd = QuestionnaireData.find(
-        (item) => normalizeDeptName(item.department) === normalizeDeptName(dept)
+    selectedDepartmentObjects.forEach((deptObj) => {
+      const qd = DEPARTMENT_QUESTIONNAIRES.find(
+        (item) =>
+          normalizeDeptName(item.department) === normalizeDeptName(deptObj.name) ||
+          item.departmentId === deptObj.id
       );
-      map[dept] = (qd?.questions ?? [])
-        .map(normaliseQuestion)
-        .filter(
-          (q) =>
-            q.name !== "Why do you want to join Organization Name?" &&
-            q.name !== "Why do you want to join DWASFW?"
-        );
+      map[deptObj.name] = qd?.questions ?? [];
     });
     return map;
-  }, [departmentNames]);
+  }, [selectedDepartmentObjects]);
 
-  const questionData = useMemo(() => {
-    return [
-      ...new Set(
-        departmentNames.flatMap((department) =>
-          (
-            QuestionnaireData.find(
-              (item) => normalizeDeptName(item.department) === normalizeDeptName(department)
-            )?.questions ?? []
-          )
-            .map(normaliseQuestion)
-            .map((question) => question.name)
-        )
-      ),
-    ];
-  }, [departmentNames]);
-
+  // Build dynamic form schema
   const formSchema = useMemo(() => {
     const schemaObj = {
       Name: z.string().min(2, "Full Name is required (at least 2 characters)"),
@@ -132,30 +123,88 @@ const FormComp = ({ dept1, dept2, isLoading, setIsLoading }) => {
         .regex(/^\d{10}$/, "Phone number must be exactly 10 digits"),
       Gender: z.string().optional(),
       "Year of Study": z.string().optional(),
-      "Why do you want to join Organization Name?": z
-        .string()
-        .min(10, "Please provide at least 10 characters for your motivation statement"),
+      GitHubUrl: z.string().optional(),
+      LinkedInUrl: z.string().optional(),
+      PortfolioUrl: z.string().optional(),
+
+      // Backward compatibility alias for motivation
+      "Why do you want to join Organization Name?": z.string().optional(),
     };
 
-    questionData.forEach((qd) => {
-      schemaObj[qd] = z.string().optional();
+    // Why GDG Questions
+    WHY_GDG_QUESTIONS.forEach((q) => {
+      schemaObj[q.id] = q.required
+        ? z.string().min(3, `${q.label} is required`)
+        : z.string().optional();
+    });
+
+    // Technical Interests Questions
+    TECHNICAL_INTEREST_QUESTIONS.forEach((q) => {
+      schemaObj[q.id] = q.required
+        ? z.string().min(1, `${q.label} is required`)
+        : z.string().optional();
+    });
+
+    // Department Specific Questions
+    Object.values(deptQuestionsMap).forEach((qList) => {
+      qList.forEach((q) => {
+        schemaObj[q.id] = q.required
+          ? z.string().min(3, `${q.label} is required`)
+          : z.string().optional();
+        // Also map name key for legacy lookup
+        if (q.name && q.name !== q.id) {
+          schemaObj[q.name] = z.string().optional();
+        }
+      });
+    });
+
+    // Projects Questions
+    PROJECT_QUESTIONS.forEach((q) => {
+      schemaObj[q.id] = q.required
+        ? z.string().min(1, `${q.label} is required`)
+        : z.string().optional();
+    });
+
+    // Reflection Questions
+    REFLECTION_QUESTIONS.forEach((q) => {
+      schemaObj[q.id] = z.string().optional();
     });
 
     return z.object(schemaObj);
-  }, [questionData]);
+  }, [deptQuestionsMap]);
 
-  const form = useForm({
-    resolver: zodResolver(formSchema),
-    mode: "onBlur",
-    defaultValues: {
+  const defaultValues = useMemo(() => {
+    const defaults = {
       Name: "",
       RegistrationNumber: "",
       Email: "",
       Phone: "",
       Gender: "",
       "Year of Study": "1st Year",
+      GitHubUrl: "",
+      LinkedInUrl: "",
+      PortfolioUrl: "",
       "Why do you want to join Organization Name?": "",
-    },
+    };
+
+    WHY_GDG_QUESTIONS.forEach((q) => (defaults[q.id] = ""));
+    TECHNICAL_INTEREST_QUESTIONS.forEach((q) => (defaults[q.id] = ""));
+    Object.values(deptQuestionsMap).forEach((qList) => {
+      qList.forEach((q) => {
+        defaults[q.id] = "";
+        if (q.name) defaults[q.name] = "";
+      });
+    });
+    PROJECT_QUESTIONS.forEach((q) => (defaults[q.id] = ""));
+    REFLECTION_QUESTIONS.forEach((q) => (defaults[q.id] = ""));
+
+    return defaults;
+  }, [deptQuestionsMap]);
+
+  const form = useForm({
+    resolver: zodResolver(formSchema),
+    mode: "onBlur",
+    defaultValues,
   });
 
   // Initialize draft from localStorage and check remote submission status
@@ -178,7 +227,8 @@ const FormComp = ({ dept1, dept2, isLoading, setIsLoading }) => {
 
       if (!remoteSubmitted.length) {
         const cacheKey = `submitted_depts_${email}`;
-        const cached = typeof window !== "undefined" ? sessionStorage.getItem(cacheKey) : null;
+        const cached =
+          typeof window !== "undefined" ? sessionStorage.getItem(cacheKey) : null;
 
         if (cached) {
           try {
@@ -255,31 +305,28 @@ const FormComp = ({ dept1, dept2, isLoading, setIsLoading }) => {
     };
   }, [draftKey, isDraftReady, submittedDepartments, watchedValues]);
 
-  // Authentic Derived Progress Calculation
+  // Derived Progress Calculation
   const progressStats = useMemo(() => {
-    const requiredGeneral = [
+    const requiredKeys = [
       "Name",
       "RegistrationNumber",
       "Phone",
-      "Why do you want to join Organization Name?",
+      ...WHY_GDG_QUESTIONS.filter((q) => q.required).map((q) => q.id),
+      ...TECHNICAL_INTEREST_QUESTIONS.filter((q) => q.required).map((q) => q.id),
+      ...Object.values(deptQuestionsMap).flatMap((list) =>
+        list.filter((q) => q.required).map((q) => q.id)
+      ),
+      ...PROJECT_QUESTIONS.filter((q) => q.required).map((q) => q.id),
     ];
 
-    let totalTracked = requiredGeneral.length;
+    let totalTracked = requiredKeys.length;
     let answeredTracked = 0;
 
-    requiredGeneral.forEach((key) => {
-      if (watchedValues?.[key] && String(watchedValues[key]).trim().length > 0) {
+    requiredKeys.forEach((key) => {
+      const val = watchedValues?.[key];
+      if (val && String(val).trim().length > 0) {
         answeredTracked += 1;
       }
-    });
-
-    Object.values(deptQuestionsMap).forEach((questionsList) => {
-      questionsList.forEach((q) => {
-        totalTracked += 1;
-        if (watchedValues?.[q.name] && String(watchedValues[q.name]).trim().length > 0) {
-          answeredTracked += 1;
-        }
-      });
     });
 
     const percent =
@@ -292,53 +339,55 @@ const FormComp = ({ dept1, dept2, isLoading, setIsLoading }) => {
     };
   }, [deptQuestionsMap, watchedValues]);
 
-  const [expandedHelp, setExpandedHelp] = useState({});
-
-  const toggleHelp = (qName) => {
+  const toggleHelp = (qId) => {
     setExpandedHelp((prev) => ({
       ...prev,
-      [qName]: !prev[qName],
+      [qId]: !prev[qId],
     }));
   };
 
-  // Pre-Flight Quality Diagnostics (Deterministic Heuristics)
+  // Pre-Flight Quality Diagnostics
   const preFlightAnalysis = useMemo(() => {
     const answersList = [];
-    const whyJoin = watchedValues?.["Why do you want to join Organization Name?"];
-    if (whyJoin && String(whyJoin).trim()) {
-      answersList.push({
-        question: "Why do you want to join Organization Name?",
-        value: String(whyJoin).trim(),
-      });
-    }
 
-    Object.values(deptQuestionsMap).forEach((questionsList) => {
-      questionsList.forEach((q) => {
-        const val = watchedValues?.[q.name];
-        if (val && String(val).trim()) {
-          answersList.push({
-            question: q.name,
-            value: String(val).trim(),
-          });
-        }
-      });
+    // Collect all text responses
+    [
+      ...WHY_GDG_QUESTIONS,
+      ...TECHNICAL_INTEREST_QUESTIONS,
+      ...Object.values(deptQuestionsMap).flat(),
+      ...PROJECT_QUESTIONS,
+      ...REFLECTION_QUESTIONS,
+    ].forEach((q) => {
+      const val = watchedValues?.[q.id] || watchedValues?.[q.name];
+      if (val && String(val).trim().length > 0 && typeof val === "string") {
+        answersList.push({
+          question: q.label || q.name,
+          value: String(val).trim(),
+          type: q.type,
+        });
+      }
     });
 
-    const shortAnswers = answersList.filter((a) => a.value.length < 20);
+    // Check for brief answers on long-text questions (< 20 chars)
+    const shortAnswers = answersList.filter(
+      (a) => a.type === "long-text" && a.value.length < 20
+    );
 
     // Duplicate detection: group by lowercase normalized value
     const duplicates = [];
     const seenValues = new Map();
     answersList.forEach((a) => {
-      const normalized = a.value.toLowerCase();
-      if (seenValues.has(normalized)) {
-        duplicates.push({
-          question1: seenValues.get(normalized),
-          question2: a.question,
-          value: a.value,
-        });
-      } else {
-        seenValues.set(normalized, a.question);
+      if (a.value.length >= 10) {
+        const normalized = a.value.toLowerCase();
+        if (seenValues.has(normalized)) {
+          duplicates.push({
+            question1: seenValues.get(normalized),
+            question2: a.question,
+            value: a.value,
+          });
+        } else {
+          seenValues.set(normalized, a.question);
+        }
       }
     });
 
@@ -366,7 +415,7 @@ const FormComp = ({ dept1, dept2, isLoading, setIsLoading }) => {
     };
   }, [deptQuestionsMap, progressStats, watchedValues]);
 
-  // Step Validation Helpers
+  // Step Validation Handlers
   const validateStep1 = async () => {
     const isValid = await form.trigger(["Name", "RegistrationNumber", "Phone"]);
     if (isValid) {
@@ -378,18 +427,56 @@ const FormComp = ({ dept1, dept2, isLoading, setIsLoading }) => {
   };
 
   const validateStep2 = async () => {
-    const isValid = await form.trigger(["Why do you want to join Organization Name?"]);
+    const requiredWhyKeys = WHY_GDG_QUESTIONS.filter((q) => q.required).map(
+      (q) => q.id
+    );
+    const isValid = await form.trigger(requiredWhyKeys);
     if (isValid) {
       setCurrentStep(3);
       window.scrollTo({ top: 0, behavior: "smooth" });
     } else {
-      toast.error("Please provide your answer to the general question.");
+      toast.error("Please answer all required Why GDG questions.");
     }
   };
 
-  const validateStep3 = () => {
-    setCurrentStep(4);
-    window.scrollTo({ top: 0, behavior: "smooth" });
+  const validateStep3 = async () => {
+    const requiredTechKeys = TECHNICAL_INTEREST_QUESTIONS.filter((q) => q.required).map(
+      (q) => q.id
+    );
+    const isValid = await form.trigger(requiredTechKeys);
+    if (isValid) {
+      setCurrentStep(4);
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    } else {
+      toast.error("Please answer all required technical interest questions.");
+    }
+  };
+
+  const validateStep4 = async () => {
+    const requiredDeptKeys = Object.values(deptQuestionsMap)
+      .flat()
+      .filter((q) => q.required)
+      .map((q) => q.id);
+    const isValid = await form.trigger(requiredDeptKeys);
+    if (isValid) {
+      setCurrentStep(5);
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    } else {
+      toast.error("Please answer all required department questions.");
+    }
+  };
+
+  const validateStep5 = async () => {
+    const requiredProjectKeys = PROJECT_QUESTIONS.filter((q) => q.required).map(
+      (q) => q.id
+    );
+    const isValid = await form.trigger(requiredProjectKeys);
+    if (isValid) {
+      setCurrentStep(6);
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    } else {
+      toast.error("Please answer the project section questions.");
+    }
   };
 
   if (!isLoaded) {
@@ -397,19 +484,19 @@ const FormComp = ({ dept1, dept2, isLoading, setIsLoading }) => {
       <div className="flex justify-center items-center min-h-[50vh]">
         <div className="text-center">
           <span className="mx-auto mb-4 block h-8 w-8 animate-spin rounded-full border-2 border-slate-700 border-t-blue-500" />
-          <p className="text-sm text-slate-400">Loading application...</p>
+          <p className="text-sm text-slate-400">Loading GDG recruitment portal...</p>
         </div>
       </div>
     );
   }
 
   const handleSubmit = async (values) => {
-    if (isSubmitting) return; // Prevent double-submit
+    if (isSubmitting) return;
     setIsSubmitting(true);
     setErrorMessage("");
 
-    const pendingDepartments = departmentNames.filter(
-      (department) => !submittedDepartments.includes(department)
+    const pendingDepartments = selectedDepartmentObjects.filter(
+      (deptObj) => !submittedDepartments.includes(deptObj.name)
     );
 
     if (!pendingDepartments.length) {
@@ -426,60 +513,88 @@ const FormComp = ({ dept1, dept2, isLoading, setIsLoading }) => {
       Phone: values.Phone,
       Gender: values.Gender || "Prefer not to say",
       "Year of Study": values["Year of Study"] || "1st Year",
+      GitHubUrl: values.GitHubUrl || "",
+      LinkedInUrl: values.LinkedInUrl || "",
+      PortfolioUrl: values.PortfolioUrl || "",
     };
 
-    const submitDepartment = async (department) => {
-      const deptQuestionnaire = QuestionnaireData.find(
-        (item) => normalizeDeptName(item.department) === normalizeDeptName(department)
-      );
-      const questions = (deptQuestionnaire?.questions ?? []).map(normaliseQuestion);
+    const submitDepartment = async (deptObj) => {
+      const deptQuestions = deptQuestionsMap[deptObj.name] || [];
 
-      const generalWhyJoin = values["Why do you want to join Organization Name?"] || "";
+      // Primary general motivation
+      const motivationAnswer =
+        values["general.motivation"] ||
+        values["Why do you want to join Organization Name?"] ||
+        "";
 
+      // Build structured answers array with canonical metadata
       const answersArray = [
-        ...(generalWhyJoin
+        ...(motivationAnswer
           ? [
               {
                 questionId: "q_general_why_join",
-                questionText: "Why do you want to join Organization Name?",
+                questionText: "What interests you about joining GDG on Campus · VIT Chennai?",
                 questionVersion: 1,
                 type: "long-text",
-                value: generalWhyJoin,
+                value: motivationAnswer,
               },
             ]
           : []),
-        ...questions
-          .filter(
-            (q) =>
-              q.name !== "Why do you want to join Organization Name?" &&
-              q.name !== "Why do you want to join DWASFW?"
-          )
-          .map((question) => ({
-            questionId: question.id || question.questionId || question.name,
-            questionText: question.questionText || question.name,
-            questionVersion: question.version || 1,
-            type: question.type || "generic",
-            value: values[question.name] || values[question.id] || "",
-          })),
+        ...WHY_GDG_QUESTIONS.filter((q) => q.id !== "general.motivation").map((q) => ({
+          questionId: q.id,
+          questionText: q.label,
+          questionVersion: q.version || 1,
+          type: q.type,
+          value: values[q.id] || "",
+        })),
+        ...TECHNICAL_INTEREST_QUESTIONS.map((q) => ({
+          questionId: q.id,
+          questionText: q.label,
+          questionVersion: q.version || 1,
+          type: q.type,
+          value: values[q.id] || "",
+        })),
+        ...deptQuestions.map((q) => ({
+          questionId: q.id,
+          questionText: q.label || q.name,
+          questionVersion: q.version || 1,
+          type: q.type || "generic",
+          value: values[q.id] || values[q.name] || "",
+        })),
+        ...PROJECT_QUESTIONS.map((q) => ({
+          questionId: q.id,
+          questionText: q.label,
+          questionVersion: q.version || 1,
+          type: q.type,
+          value: values[q.id] || "",
+        })),
+        ...REFLECTION_QUESTIONS.map((q) => ({
+          questionId: q.id,
+          questionText: q.label,
+          questionVersion: q.version || 1,
+          type: q.type,
+          value: values[q.id] || "",
+        })),
       ];
 
-      const questionsMap = questions.reduce(
-        (answers, question) => ({
-          ...answers,
-          [question.name]: values[question.name] || "",
-        }),
-        generalWhyJoin
-          ? { "Why do you want to join Organization Name?": generalWhyJoin }
-          : {}
-      );
+      // Build dictionary map for legacy compatibility
+      const questionsMap = {};
+      answersArray.forEach((ans) => {
+        questionsMap[ans.questionText] = ans.value;
+        questionsMap[ans.questionId] = ans.value;
+      });
+      if (motivationAnswer) {
+        questionsMap["Why do you want to join Organization Name?"] = motivationAnswer;
+      }
 
       const response = await fetch("/api/submit-form", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...basicDetails,
-          Department: department,
-          departmentId: deptQuestionnaire?.departmentId,
+          Department: deptObj.name,
+          departmentId: deptObj.id,
+          departmentSlug: deptObj.slug,
           Questions: questionsMap,
           Answers: answersArray,
         }),
@@ -487,17 +602,18 @@ const FormComp = ({ dept1, dept2, isLoading, setIsLoading }) => {
 
       if (!response.ok) {
         const error = await response.json().catch(() => ({}));
-        throw new Error(error.message || `Could not submit ${department}.`);
+        throw new Error(error.message || `Could not submit ${deptObj.name}.`);
       }
 
       const result = await response.json();
       return {
-        department,
+        department: deptObj.name,
+        departmentId: deptObj.id,
         success: true,
         submissionId:
           result.submissionId ||
           `sub_${(values.Email || "applicant").toLowerCase().replace(/[^a-z0-9]/g, "_")}_${
-            deptQuestionnaire?.departmentId || department.toLowerCase().replace(/[^a-z0-9]/g, "_")
+            deptObj.id || deptObj.name.toLowerCase().replace(/[^a-z0-9]/g, "_")
           }`,
         timestamp: new Date().toISOString(),
       };
@@ -512,7 +628,7 @@ const FormComp = ({ dept1, dept2, isLoading, setIsLoading }) => {
         .map((result) => result.value);
 
       const failed = results.flatMap((result, index) =>
-        result.status === "rejected" ? [pendingDepartments[index]] : []
+        result.status === "rejected" ? [pendingDepartments[index].name] : []
       );
 
       const completedDepts = [
@@ -547,8 +663,8 @@ const FormComp = ({ dept1, dept2, isLoading, setIsLoading }) => {
           }. Please retry ${failed.join(", ")}.`
         );
       } else {
-        // Move to Step 5: Success Receipt
-        setCurrentStep(5);
+        // Step 7: Application Submitted Receipt
+        setCurrentStep(7);
         window.scrollTo({ top: 0, behavior: "smooth" });
       }
     } catch {
@@ -561,36 +677,39 @@ const FormComp = ({ dept1, dept2, isLoading, setIsLoading }) => {
     }
   };
 
-  // Step 5: Success Receipt View
-  if (currentStep === 5) {
+  // STEP 7: APPLICATION SUBMITTED RECEIPT VIEW
+  if (currentStep === 7) {
     return (
       <main className="max-w-3xl mx-auto px-4 sm:px-6 py-12">
-        <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-6 sm:p-10 shadow-2xl text-center">
-          <div className="w-16 h-16 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 flex items-center justify-center mx-auto mb-6">
-            <CheckCircle2 className="w-8 h-8" />
+        <div className="bg-slate-900/90 border border-slate-800 rounded-3xl p-6 sm:p-10 shadow-2xl text-center relative overflow-hidden">
+          {/* Top Google accent bar */}
+          <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-[#4285F4] via-[#EA4335] via-[#F4B400] to-[#0F9D58]" />
+
+          <div className="w-16 h-16 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 flex items-center justify-center mx-auto mb-6 shadow-inner">
+            <CheckCircle2 className="w-9 h-9" />
           </div>
 
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-950/60 border border-emerald-800/60 text-emerald-300 text-xs font-semibold mb-3">
+          <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-emerald-950/70 border border-emerald-800/60 text-emerald-300 text-xs font-semibold mb-3">
             <Sparkles className="w-3.5 h-3.5" />
-            <span>Application Successfully Submitted</span>
+            <span>GDG on Campus · VIT Chennai · Recruitment 2026</span>
           </div>
 
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-100">
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-white">
             Official Application Receipt
           </h1>
-          <p className="text-sm text-slate-400 mt-2 max-w-lg mx-auto">
-            Thank you, <span className="text-slate-200 font-semibold">{form.getValues("Name")}</span>. Your application is officially on record and entering technical review.
+          <p className="text-sm text-slate-300 mt-2 max-w-lg mx-auto">
+            Thank you, <span className="text-white font-semibold">{form.getValues("Name")}</span>. Your application has been securely recorded and submitted to department leads for review.
           </p>
 
           {/* Receipt Details Box */}
-          <div className="mt-8 bg-slate-950/60 border border-slate-800 rounded-xl p-5 text-left divide-y divide-slate-800/60">
+          <div className="mt-8 bg-slate-950/80 border border-slate-800/80 rounded-2xl p-5 sm:p-6 text-left divide-y divide-slate-800/60">
             <div className="pb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-              <span className="text-xs text-slate-400 font-medium">Applied Departments</span>
+              <span className="text-xs text-slate-400 font-medium">Applied Technical Departments</span>
               <div className="flex flex-wrap gap-2">
                 {departmentNames.map((d) => (
                   <span
                     key={d}
-                    className="px-2.5 py-1 rounded-md bg-blue-950/80 border border-blue-800 text-blue-300 text-xs font-semibold"
+                    className="px-3 py-1 rounded-lg bg-blue-950/80 border border-blue-800/70 text-blue-300 text-xs font-bold"
                   >
                     {d}
                   </span>
@@ -600,15 +719,15 @@ const FormComp = ({ dept1, dept2, isLoading, setIsLoading }) => {
 
             <div className="py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
               <span className="text-xs text-slate-400 font-medium">Canonical Submission ID(s)</span>
-              <div className="flex flex-col gap-1 font-mono text-xs text-slate-200">
+              <div className="flex flex-col gap-1.5 font-mono text-xs text-slate-200">
                 {submissionReceipts.length > 0
                   ? submissionReceipts.map((r) => (
-                      <span key={r.submissionId} className="bg-slate-900 px-2 py-1 rounded border border-slate-800">
+                      <span key={r.submissionId} className="bg-slate-900 px-2.5 py-1 rounded-md border border-slate-800 text-[11px]">
                         {r.submissionId}
                       </span>
                     ))
                   : departmentNames.map((d) => (
-                      <span key={d} className="bg-slate-900 px-2 py-1 rounded border border-slate-800">
+                      <span key={d} className="bg-slate-900 px-2.5 py-1 rounded-md border border-slate-800 text-[11px]">
                         sub_{user?.email?.split("@")[0]}_{d.toLowerCase().slice(0, 4)}
                       </span>
                     ))}
@@ -623,22 +742,22 @@ const FormComp = ({ dept1, dept2, isLoading, setIsLoading }) => {
             </div>
 
             <div className="pt-3 flex items-center justify-between">
-              <span className="text-xs text-slate-400 font-medium">Registered Email</span>
+              <span className="text-xs text-slate-400 font-medium">Registered Candidate Email</span>
               <span className="text-xs text-slate-200 font-medium">{user?.email}</span>
             </div>
           </div>
 
-          {/* Timeline / What's Next */}
+          {/* Application Lifecycle Tracker */}
           <div className="mt-8 text-left">
-            <h2 className="text-sm font-bold text-slate-200 uppercase tracking-wider mb-4 flex items-center gap-2">
+            <h2 className="text-xs font-bold text-slate-300 uppercase tracking-wider mb-4 flex items-center gap-2">
               <Clock className="w-4 h-4 text-blue-400" />
-              <span>Application Review Timeline</span>
+              <span>Application Lifecycle Tracker</span>
             </h2>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <div className="p-3.5 rounded-lg bg-emerald-950/30 border border-emerald-800/40">
+              <div className="p-3.5 rounded-xl bg-emerald-950/40 border border-emerald-800/50">
                 <div className="text-xs font-bold text-emerald-400 flex items-center gap-1.5">
-                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  <CheckCircle2 className="w-4 h-4" />
                   <span>1. Submitted</span>
                 </div>
                 <p className="text-[11px] text-slate-400 mt-1">
@@ -646,17 +765,17 @@ const FormComp = ({ dept1, dept2, isLoading, setIsLoading }) => {
                 </p>
               </div>
 
-              <div className="p-3.5 rounded-lg bg-blue-950/30 border border-blue-800/40">
+              <div className="p-3.5 rounded-xl bg-blue-950/40 border border-blue-800/50">
                 <div className="text-xs font-bold text-blue-400 flex items-center gap-1.5">
                   <span className="w-2 h-2 rounded-full bg-blue-400 animate-pulse" />
                   <span>2. Under Review</span>
                 </div>
                 <p className="text-[11px] text-slate-400 mt-1">
-                  Department leads evaluate technical responses.
+                  Domain leads evaluate candidate responses.
                 </p>
               </div>
 
-              <div className="p-3.5 rounded-lg bg-slate-950/40 border border-slate-800/60 opacity-75">
+              <div className="p-3.5 rounded-xl bg-slate-950/40 border border-slate-800/60 opacity-80">
                 <div className="text-xs font-bold text-slate-400 flex items-center gap-1.5">
                   <span className="w-2 h-2 rounded-full bg-slate-600" />
                   <span>3. Interview Invite</span>
@@ -671,6 +790,13 @@ const FormComp = ({ dept1, dept2, isLoading, setIsLoading }) => {
           {/* Action Navigation */}
           <div className="mt-8 pt-6 border-t border-slate-800 flex flex-col sm:flex-row items-center justify-center gap-4">
             <Button
+              onClick={() => router.push("/passport")}
+              className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-500 text-white font-semibold gap-2 shadow-lg shadow-emerald-950"
+            >
+              <ShieldCheck className="w-4 h-4" />
+              <span>View Application Passport</span>
+            </Button>
+            <Button
               onClick={() => router.push("/")}
               variant="outline"
               className="w-full sm:w-auto border-slate-700 hover:bg-slate-800 text-slate-200 gap-2"
@@ -678,15 +804,6 @@ const FormComp = ({ dept1, dept2, isLoading, setIsLoading }) => {
               <Home className="w-4 h-4" />
               <span>Return to Home</span>
             </Button>
-            {submittedDepartments.length < 2 && (
-              <Button
-                onClick={() => router.push("/departments")}
-                className="w-full sm:w-auto bg-blue-600 hover:bg-blue-500 text-white gap-2"
-              >
-                <span>Apply to Another Department</span>
-                <ArrowRight className="w-4 h-4" />
-              </Button>
-            )}
           </div>
         </div>
       </main>
@@ -694,17 +811,19 @@ const FormComp = ({ dept1, dept2, isLoading, setIsLoading }) => {
   }
 
   const stepsConfig = [
-    { id: 1, label: "Personal Details", icon: User },
-    { id: 2, label: "General Questions", icon: FileText },
-    { id: 3, label: "Department Questions", icon: Layers },
-    { id: 4, label: "Review & Confirm", icon: CheckSquare },
+    { id: 1, label: "About You", icon: User },
+    { id: 2, label: "Why GDG?", icon: Heart },
+    { id: 3, label: "Interests & Campus", icon: Compass },
+    { id: 4, label: "Department Questions", icon: Layers },
+    { id: 5, label: "Projects & Experience", icon: FolderGit2 },
+    { id: 6, label: "Review & Confirm", icon: CheckSquare },
   ];
 
   return (
     <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       {/* Stepper Navigation Header */}
       <nav aria-label="Application Progress" className="mb-8">
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-2.5">
           {stepsConfig.map((step) => {
             const Icon = step.icon;
             const isDone = currentStep > step.id;
@@ -718,16 +837,16 @@ const FormComp = ({ dept1, dept2, isLoading, setIsLoading }) => {
                   if (isDone) setCurrentStep(step.id);
                 }}
                 disabled={!isDone && !isCurrent}
-                className={`flex items-center gap-2.5 p-3 rounded-xl border text-left transition-all ${
+                className={`flex items-center gap-2 p-2.5 rounded-xl border text-left transition-all ${
                   isCurrent
-                    ? "bg-blue-950/40 border-blue-500 text-slate-100 shadow-md ring-1 ring-blue-500/30"
+                    ? "bg-blue-950/50 border-blue-500 text-white shadow-md ring-1 ring-blue-500/40"
                     : isDone
                     ? "bg-slate-900/60 border-slate-800 text-slate-300 hover:border-slate-700 cursor-pointer"
-                    : "bg-slate-950/30 border-slate-900 text-slate-600 cursor-not-allowed"
+                    : "bg-slate-950/30 border-slate-900/80 text-slate-600 cursor-not-allowed"
                 }`}
               >
                 <div
-                  className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 text-xs font-bold ${
+                  className={`w-6 h-6 rounded-lg flex items-center justify-center shrink-0 text-xs font-bold ${
                     isDone
                       ? "bg-emerald-600 text-white"
                       : isCurrent
@@ -735,13 +854,13 @@ const FormComp = ({ dept1, dept2, isLoading, setIsLoading }) => {
                       : "bg-slate-800 text-slate-500"
                   }`}
                 >
-                  {isDone ? <CheckCircle2 className="w-4 h-4" /> : step.id}
+                  {isDone ? <CheckCircle2 className="w-3.5 h-3.5" /> : step.id}
                 </div>
                 <div className="overflow-hidden">
-                  <div className="text-[10px] uppercase font-semibold tracking-wider text-slate-400">
+                  <div className="text-[9px] uppercase font-bold tracking-wider text-slate-400">
                     Step {step.id}
                   </div>
-                  <div className="text-xs font-medium truncate">{step.label}</div>
+                  <div className="text-xs font-semibold truncate">{step.label}</div>
                 </div>
               </button>
             );
@@ -751,15 +870,15 @@ const FormComp = ({ dept1, dept2, isLoading, setIsLoading }) => {
         {/* Live Derived Progress Bar */}
         <div className="mt-4 p-3 bg-slate-900/60 rounded-xl border border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
           <div className="flex items-center gap-2 text-xs text-slate-300">
-            <span className="font-semibold text-blue-400">{progressStats.percent}% Completed</span>
+            <span className="font-bold text-blue-400">{progressStats.percent}% Completed</span>
             <span className="text-slate-600">·</span>
             <span>
-              {progressStats.answered} of {progressStats.total} fields answered
+              {progressStats.answered} of {progressStats.total} required questions answered
             </span>
           </div>
           <div className="w-full sm:w-48 bg-slate-800 h-2 rounded-full overflow-hidden">
             <div
-              className="bg-blue-500 h-full rounded-full transition-all duration-300 ease-out"
+              className="bg-gradient-to-r from-blue-500 to-emerald-500 h-full rounded-full transition-all duration-300 ease-out"
               style={{ width: `${progressStats.percent}%` }}
             />
           </div>
@@ -785,18 +904,22 @@ const FormComp = ({ dept1, dept2, isLoading, setIsLoading }) => {
       )}
 
       {/* Form Container */}
-      <div className="bg-slate-900/50 border border-slate-800 rounded-2xl p-6 sm:p-8 shadow-xl">
+      <div className="bg-slate-900/60 border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-xl">
         <Form {...form}>
           <form onSubmit={form.handleSubmit(handleSubmit)}>
-            {/* STEP 1: PERSONAL DETAILS */}
+            {/* STEP 1: PERSONAL INFORMATION */}
             {currentStep === 1 && (
               <section aria-labelledby="step1-heading" className="space-y-6">
                 <div className="border-b border-slate-800 pb-4">
-                  <h2 id="step1-heading" className="text-xl font-bold text-slate-100">
-                    Step 1: Personal Information
+                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-950/60 border border-blue-800/60 text-blue-300 text-xs font-semibold mb-2">
+                    <User className="w-3.5 h-3.5" />
+                    <span>Candidate Profile</span>
+                  </div>
+                  <h2 id="step1-heading" className="text-xl font-bold text-white">
+                    Step 1: About You
                   </h2>
                   <p className="text-xs text-slate-400 mt-1">
-                    Please provide your contact and academic details.
+                    Please provide your contact, academic, and optional profile details.
                   </p>
                 </div>
 
@@ -833,7 +956,7 @@ const FormComp = ({ dept1, dept2, isLoading, setIsLoading }) => {
                           />
                         </FormControl>
                         <FormDescription className="text-[11px] text-slate-400">
-                          Format: Year (23-26), 3 letters, 3-5 digits (e.g. 25BCE1328, 25EEE1562, 26ECE176)
+                          Format: Year (23-26), 3 branch letters, 3-5 digits (e.g. 25BCE1328)
                         </FormDescription>
                         <FormMessage className="text-red-400 text-xs" />
                       </FormItem>
@@ -855,7 +978,7 @@ const FormComp = ({ dept1, dept2, isLoading, setIsLoading }) => {
                           />
                         </FormControl>
                         <FormDescription className="text-[11px] text-slate-400">
-                          Derived from your authenticated session.
+                          Derived from your verified login session.
                         </FormDescription>
                         <FormMessage className="text-red-400 text-xs" />
                       </FormItem>
@@ -876,7 +999,7 @@ const FormComp = ({ dept1, dept2, isLoading, setIsLoading }) => {
                           />
                         </FormControl>
                         <FormDescription className="text-[11px] text-slate-400">
-                          10 digit mobile number without country code
+                          10 digit Indian mobile number without +91
                         </FormDescription>
                         <FormMessage className="text-red-400 text-xs" />
                       </FormItem>
@@ -929,6 +1052,42 @@ const FormComp = ({ dept1, dept2, isLoading, setIsLoading }) => {
                       </FormItem>
                     )}
                   />
+
+                  <FormField
+                    control={form.control}
+                    name="GitHubUrl"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-slate-200">GitHub Profile URL (Optional)</FormLabel>
+                        <FormControl>
+                          <Input
+                            {...field}
+                            placeholder="https://github.com/username"
+                            className="bg-slate-950 border-slate-800 focus-visible:ring-blue-500"
+                          />
+                        </FormControl>
+                        <FormMessage className="text-red-400 text-xs" />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="LinkedInUrl"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-slate-200">LinkedIn Profile URL (Optional)</FormLabel>
+                        <FormControl>
+                          <Input
+                            {...field}
+                            placeholder="https://linkedin.com/in/username"
+                            className="bg-slate-950 border-slate-800 focus-visible:ring-blue-500"
+                          />
+                        </FormControl>
+                        <FormMessage className="text-red-400 text-xs" />
+                      </FormItem>
+                    )}
+                  />
                 </div>
 
                 <div className="pt-6 border-t border-slate-800 flex justify-end">
@@ -937,48 +1096,101 @@ const FormComp = ({ dept1, dept2, isLoading, setIsLoading }) => {
                     onClick={validateStep1}
                     className="bg-blue-600 hover:bg-blue-500 text-white font-semibold px-6 gap-2"
                   >
-                    <span>Next: General Questions</span>
+                    <span>Next: Why GDG?</span>
                     <ArrowRight className="w-4 h-4" />
                   </Button>
                 </div>
               </section>
             )}
 
-            {/* STEP 2: GENERAL QUESTION */}
+            {/* STEP 2: WHY GDG? */}
             {currentStep === 2 && (
               <section aria-labelledby="step2-heading" className="space-y-6">
                 <div className="border-b border-slate-800 pb-4">
-                  <h2 id="step2-heading" className="text-xl font-bold text-slate-100">
-                    Step 2: General Application Questions
+                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-950/60 border border-blue-800/60 text-blue-300 text-xs font-semibold mb-2">
+                    <Heart className="w-3.5 h-3.5 text-red-400" />
+                    <span>Community & Motivation</span>
+                  </div>
+                  <h2 id="step2-heading" className="text-xl font-bold text-white">
+                    Step 2: Why GDG?
                   </h2>
                   <p className="text-xs text-slate-400 mt-1">
-                    Help us understand your motivation to join our organization.
+                    Help us understand what brings you to GDG on Campus · VIT Chennai and how you want to learn, build, and grow with the student community.
                   </p>
                 </div>
 
-                <FormField
-                  control={form.control}
-                  name="Why do you want to join Organization Name?"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-slate-200 text-sm font-semibold">
-                        Why do you want to join Organization Name? *
-                      </FormLabel>
-                      <FormControl>
-                        <Textarea
-                          {...field}
-                          rows={6}
-                          placeholder="Tell us about your background, interests, and what you hope to contribute and learn..."
-                          className="bg-slate-950 border-slate-800 focus-visible:ring-blue-500 text-sm leading-relaxed"
-                        />
-                      </FormControl>
-                      <FormDescription className="text-xs text-slate-400">
-                        Aim for 2–4 concise paragraphs explaining your goals.
-                      </FormDescription>
-                      <FormMessage className="text-red-400 text-xs" />
-                    </FormItem>
-                  )}
-                />
+                <div className="space-y-5">
+                  {WHY_GDG_QUESTIONS.map((q, idx) => (
+                    <FormField
+                      key={q.id}
+                      control={form.control}
+                      name={q.id}
+                      render={({ field }) => (
+                        <FormItem className="space-y-1.5 p-4 rounded-xl bg-slate-950/40 border border-slate-800/80">
+                          <FormLabel className="text-slate-200 text-sm font-semibold">
+                            {idx + 1}. {q.label} {q.required && "*"}
+                          </FormLabel>
+                          {q.helperText && (
+                            <p className="text-[11px] text-slate-400">{q.helperText}</p>
+                          )}
+                          <FormControl>
+                            {q.type === "short-text" ? (
+                              <Input
+                                {...field}
+                                placeholder={q.placeholder || "Your answer..."}
+                                className="bg-slate-950 border-slate-800 focus-visible:ring-blue-500 text-sm"
+                              />
+                            ) : q.type === "multiple-choice" ? (
+                              <div className="space-y-2 pt-1">
+                                {q.options?.map((opt) => {
+                                  const currentVals = field.value
+                                    ? String(field.value).split(" | ")
+                                    : [];
+                                  const isSelected = currentVals.includes(opt);
+
+                                  return (
+                                    <label
+                                      key={opt}
+                                      className={`flex items-center gap-3 p-2.5 rounded-lg border text-xs cursor-pointer transition-colors ${
+                                        isSelected
+                                          ? "bg-blue-950/40 border-blue-500/60 text-blue-200"
+                                          : "bg-slate-900/40 border-slate-800 text-slate-300 hover:border-slate-700"
+                                      }`}
+                                    >
+                                      <input
+                                        type="checkbox"
+                                        checked={isSelected}
+                                        onChange={(e) => {
+                                          let updated = [...currentVals];
+                                          if (e.target.checked) {
+                                            updated.push(opt);
+                                          } else {
+                                            updated = updated.filter((v) => v !== opt);
+                                          }
+                                          field.onChange(updated.join(" | "));
+                                        }}
+                                        className="rounded border-slate-700 bg-slate-950 text-blue-600 focus:ring-blue-500"
+                                      />
+                                      <span>{opt}</span>
+                                    </label>
+                                  );
+                                })}
+                              </div>
+                            ) : (
+                              <Textarea
+                                {...field}
+                                rows={4}
+                                placeholder={q.placeholder || "Share your thoughts in 2-3 paragraphs..."}
+                                className="bg-slate-950 border-slate-800 focus-visible:ring-blue-500 text-sm leading-relaxed"
+                              />
+                            )}
+                          </FormControl>
+                          <FormMessage className="text-red-400 text-xs" />
+                        </FormItem>
+                      )}
+                    />
+                  ))}
+                </div>
 
                 <div className="pt-6 border-t border-slate-800 flex items-center justify-between">
                   <Button
@@ -995,101 +1207,118 @@ const FormComp = ({ dept1, dept2, isLoading, setIsLoading }) => {
                     onClick={validateStep2}
                     className="bg-blue-600 hover:bg-blue-500 text-white font-semibold px-6 gap-2"
                   >
-                    <span>Next: Department Questions</span>
+                    <span>Next: Technical Interests</span>
                     <ArrowRight className="w-4 h-4" />
                   </Button>
                 </div>
               </section>
             )}
 
-            {/* STEP 3: DEPARTMENT QUESTIONS */}
+            {/* STEP 3: TECHNICAL INTERESTS & CAMPUS PROJECT */}
             {currentStep === 3 && (
               <section aria-labelledby="step3-heading" className="space-y-6">
                 <div className="border-b border-slate-800 pb-4">
-                  <h2 id="step3-heading" className="text-xl font-bold text-slate-100">
-                    Step 3: Department Specific Questions
+                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-950/60 border border-blue-800/60 text-blue-300 text-xs font-semibold mb-2">
+                    <Compass className="w-3.5 h-3.5 text-blue-400" />
+                    <span>Exploration & Campus Impact</span>
+                  </div>
+                  <h2 id="step3-heading" className="text-xl font-bold text-white">
+                    Step 3: Technical Interests & Campus Project
                   </h2>
                   <p className="text-xs text-slate-400 mt-1">
-                    Answer the technical and domain-specific questions for your selected department(s).
+                    Tell us what domains excite you and propose a creative project idea for students at VIT Chennai.
                   </p>
                 </div>
 
-                {departmentNames.map((deptName) => {
-                  const questions = deptQuestionsMap[deptName] || [];
+                <div className="space-y-5">
+                  {TECHNICAL_INTEREST_QUESTIONS.map((q, idx) => (
+                    <FormField
+                      key={q.id}
+                      control={form.control}
+                      name={q.id}
+                      render={({ field }) => (
+                        <FormItem className="space-y-1.5 p-4 rounded-xl bg-slate-950/40 border border-slate-800/80">
+                          <FormLabel className="text-slate-200 text-sm font-semibold">
+                            {idx + 1}. {q.label} {q.required && "*"}
+                          </FormLabel>
+                          {q.helperText && (
+                            <p className="text-[11px] text-slate-400">{q.helperText}</p>
+                          )}
+                          <FormControl>
+                            {q.type === "multiple-choice" ? (
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                                {q.options?.map((opt) => {
+                                  const currentVals = field.value
+                                    ? String(field.value).split(" | ")
+                                    : [];
+                                  const isSelected = currentVals.includes(opt);
 
-                  return (
-                    <div key={deptName} className="p-5 rounded-xl bg-slate-950/40 border border-slate-800 space-y-4">
-                      <div className="flex items-center gap-2 pb-2 border-b border-slate-800">
-                        <span className="w-2 h-2 rounded-full bg-blue-500" />
-                        <h3 className="text-base font-bold text-slate-200">{deptName} Questionnaire</h3>
-                      </div>
-
-                      {questions.length === 0 ? (
-                        <p className="text-xs text-slate-500 italic">No specific questionnaire for this department.</p>
-                      ) : (
-                        questions.map((question, idx) => {
-                          const isCompact = question.type === "short-text";
-
-                          return (
-                            <div key={question.id || question.name || idx} className="space-y-1.5">
-                              <FormField
-                                control={form.control}
-                                name={question.name}
-                                render={({ field }) => (
-                                  <FormItem>
-                                    <FormLabel className="text-slate-300 text-xs font-semibold">
-                                      {idx + 1}. {question.name}
-                                    </FormLabel>
-                                    <FormControl>
-                                      {isCompact ? (
-                                        <Input
-                                          {...field}
-                                          placeholder={question.placeholder || "Your answer..."}
-                                          className="bg-slate-950 border-slate-800 focus-visible:ring-blue-500"
-                                        />
-                                      ) : (
-                                        <Textarea
-                                          {...field}
-                                          rows={4}
-                                          placeholder={question.placeholder || "Provide 2-3 sentences explaining your experience or approach..."}
-                                          className="bg-slate-950 border-slate-800 focus-visible:ring-blue-500 text-sm"
-                                        />
-                                      )}
-                                    </FormControl>
-                                    <FormMessage className="text-red-400 text-xs" />
-                                  </FormItem>
-                                )}
-                              />
-                              <div className="pt-0.5">
-                                <button
-                                  type="button"
-                                  onClick={() => toggleHelp(question.name)}
-                                  className="inline-flex items-center gap-1 text-[11px] text-blue-400 hover:text-blue-300 font-medium transition-colors"
-                                >
-                                  <Lightbulb className="w-3 h-3 text-amber-400" />
-                                  <span>
-                                    {expandedHelp[question.name] ? "Hide reviewer guidance" : "What reviewers look for"}
-                                  </span>
-                                </button>
-                                {expandedHelp[question.name] && (
-                                  <div className="mt-1.5 p-3 rounded-lg bg-blue-950/40 border border-blue-900/50 text-xs text-slate-300 space-y-1 animate-in fade-in duration-150">
-                                    <div className="font-semibold text-blue-300 flex items-center gap-1.5">
-                                      <Sparkles className="w-3.5 h-3.5 text-blue-400" />
-                                      <span>Evaluation Advice</span>
-                                    </div>
-                                    <p className="text-[11px] text-slate-400 leading-relaxed">
-                                      Mention concrete project examples, specific tools/libraries you used, technical hurdles you overcame, and how you want to grow in this role.
-                                    </p>
-                                  </div>
-                                )}
+                                  return (
+                                    <label
+                                      key={opt}
+                                      className={`flex items-center gap-2.5 p-2.5 rounded-lg border text-xs cursor-pointer transition-colors ${
+                                        isSelected
+                                          ? "bg-blue-950/40 border-blue-500/60 text-blue-200"
+                                          : "bg-slate-900/40 border-slate-800 text-slate-300 hover:border-slate-700"
+                                      }`}
+                                    >
+                                      <input
+                                        type="checkbox"
+                                        checked={isSelected}
+                                        onChange={(e) => {
+                                          let updated = [...currentVals];
+                                          if (e.target.checked) {
+                                            updated.push(opt);
+                                          } else {
+                                            updated = updated.filter((v) => v !== opt);
+                                          }
+                                          field.onChange(updated.join(" | "));
+                                        }}
+                                        className="rounded border-slate-700 bg-slate-950 text-blue-600 focus:ring-blue-500"
+                                      />
+                                      <span>{opt}</span>
+                                    </label>
+                                  );
+                                })}
                               </div>
-                            </div>
-                          );
-                        })
+                            ) : q.type === "single-choice" ? (
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                                {q.options?.map((opt) => (
+                                  <label
+                                    key={opt}
+                                    className={`flex items-center gap-2.5 p-2.5 rounded-lg border text-xs cursor-pointer transition-colors ${
+                                      field.value === opt
+                                        ? "bg-blue-950/40 border-blue-500/60 text-blue-200"
+                                        : "bg-slate-900/40 border-slate-800 text-slate-300 hover:border-slate-700"
+                                    }`}
+                                  >
+                                    <input
+                                      type="radio"
+                                      name={q.id}
+                                      value={opt}
+                                      checked={field.value === opt}
+                                      onChange={() => field.onChange(opt)}
+                                      className="border-slate-700 bg-slate-950 text-blue-600 focus:ring-blue-500"
+                                    />
+                                    <span>{opt}</span>
+                                  </label>
+                                ))}
+                              </div>
+                            ) : (
+                              <Textarea
+                                {...field}
+                                rows={4}
+                                placeholder={q.placeholder || "Describe your campus project idea and approach..."}
+                                className="bg-slate-950 border-slate-800 focus-visible:ring-blue-500 text-sm leading-relaxed"
+                              />
+                            )}
+                          </FormControl>
+                          <FormMessage className="text-red-400 text-xs" />
+                        </FormItem>
                       )}
-                    </div>
-                  );
-                })}
+                    />
+                  ))}
+                </div>
 
                 <div className="pt-6 border-t border-slate-800 flex items-center justify-between">
                   <Button
@@ -1106,6 +1335,249 @@ const FormComp = ({ dept1, dept2, isLoading, setIsLoading }) => {
                     onClick={validateStep3}
                     className="bg-blue-600 hover:bg-blue-500 text-white font-semibold px-6 gap-2"
                   >
+                    <span>Next: Department Questions</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </Button>
+                </div>
+              </section>
+            )}
+
+            {/* STEP 4: DEPARTMENT QUESTIONS */}
+            {currentStep === 4 && (
+              <section aria-labelledby="step4-heading" className="space-y-6">
+                <div className="border-b border-slate-800 pb-4">
+                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-950/60 border border-blue-800/60 text-blue-300 text-xs font-semibold mb-2">
+                    <Layers className="w-3.5 h-3.5 text-purple-400" />
+                    <span>Domain Problem Solving</span>
+                  </div>
+                  <h2 id="step4-heading" className="text-xl font-bold text-white">
+                    Step 4: Department Specific Questions
+                  </h2>
+                  <p className="text-xs text-slate-400 mt-1">
+                    Answer the thoughtful, reasoning-focused questions for your chosen department(s). Remember: Beginners are evaluated on curiosity and thinking process.
+                  </p>
+                </div>
+
+                {departmentNames.map((deptName) => {
+                  const questions = deptQuestionsMap[deptName] || [];
+
+                  return (
+                    <div key={deptName} className="p-5 rounded-2xl bg-slate-950/40 border border-slate-800 space-y-4">
+                      <div className="flex items-center gap-2 pb-2 border-b border-slate-800">
+                        <span className="w-2.5 h-2.5 rounded-full bg-blue-500" />
+                        <h3 className="text-base font-bold text-white">{deptName} Questionnaire</h3>
+                      </div>
+
+                      {questions.length === 0 ? (
+                        <p className="text-xs text-slate-500 italic">No specific questionnaire found for this department.</p>
+                      ) : (
+                        questions.map((question, idx) => {
+                          const isCompact = question.type === "short-text";
+
+                          return (
+                            <div key={question.id || idx} className="space-y-1.5 pt-2">
+                              <FormField
+                                control={form.control}
+                                name={question.id}
+                                render={({ field }) => (
+                                  <FormItem>
+                                    <FormLabel className="text-slate-200 text-xs sm:text-sm font-semibold flex items-start gap-1.5">
+                                      <span className="text-blue-400">{idx + 1}.</span>
+                                      <span>{question.label} {question.required && "*"}</span>
+                                    </FormLabel>
+                                    {question.helperText && (
+                                      <p className="text-[11px] text-slate-400 leading-relaxed">
+                                        {question.helperText}
+                                      </p>
+                                    )}
+                                    <FormControl>
+                                      {question.type === "single-choice" ? (
+                                        <div className="space-y-1.5 pt-1">
+                                          {question.options?.map((opt) => (
+                                            <label
+                                              key={opt}
+                                              className={`flex items-center gap-2.5 p-2 rounded-lg border text-xs cursor-pointer ${
+                                                field.value === opt
+                                                  ? "bg-blue-950/40 border-blue-500/60 text-blue-200"
+                                                  : "bg-slate-900/40 border-slate-800 text-slate-300"
+                                              }`}
+                                            >
+                                              <input
+                                                type="radio"
+                                                name={question.id}
+                                                value={opt}
+                                                checked={field.value === opt}
+                                                onChange={() => field.onChange(opt)}
+                                                className="border-slate-700 bg-slate-950 text-blue-600"
+                                              />
+                                              <span>{opt}</span>
+                                            </label>
+                                          ))}
+                                        </div>
+                                      ) : isCompact ? (
+                                        <Input
+                                          {...field}
+                                          placeholder={question.placeholder || "Your answer..."}
+                                          className="bg-slate-950 border-slate-800 focus-visible:ring-blue-500 text-sm"
+                                        />
+                                      ) : (
+                                        <Textarea
+                                          {...field}
+                                          rows={4}
+                                          placeholder={question.placeholder || "Explain your thinking, approach, or technical perspective..."}
+                                          className="bg-slate-950 border-slate-800 focus-visible:ring-blue-500 text-sm leading-relaxed"
+                                        />
+                                      )}
+                                    </FormControl>
+                                    <FormMessage className="text-red-400 text-xs" />
+                                  </FormItem>
+                                )}
+                              />
+
+                              <div className="pt-0.5">
+                                <button
+                                  type="button"
+                                  onClick={() => toggleHelp(question.id)}
+                                  className="inline-flex items-center gap-1 text-[11px] text-blue-400 hover:text-blue-300 font-medium transition-colors"
+                                >
+                                  <Lightbulb className="w-3 h-3 text-amber-400" />
+                                  <span>
+                                    {expandedHelp[question.id] ? "Hide reviewer guidance" : "What reviewers look for"}
+                                  </span>
+                                </button>
+                                {expandedHelp[question.id] && (
+                                  <div className="mt-1.5 p-3 rounded-lg bg-blue-950/40 border border-blue-900/50 text-xs text-slate-300 space-y-1 animate-in fade-in duration-150">
+                                    <div className="font-semibold text-blue-300 flex items-center gap-1.5">
+                                      <Sparkles className="w-3.5 h-3.5 text-blue-400" />
+                                      <span>Reviewer Advice</span>
+                                    </div>
+                                    <p className="text-[11px] text-slate-400 leading-relaxed">
+                                      We care about your problem-solving approach, technical reasoning, and how you articulate trade-offs. Beginners are fully encouraged to explain how they would start learning!
+                                    </p>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })
+                      )}
+                    </div>
+                  );
+                })}
+
+                <div className="pt-6 border-t border-slate-800 flex items-center justify-between">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setCurrentStep(3)}
+                    className="border-slate-800 text-slate-300 hover:bg-slate-800 gap-2"
+                  >
+                    <ArrowLeft className="w-4 h-4" />
+                    <span>Back</span>
+                  </Button>
+                  <Button
+                    type="button"
+                    onClick={validateStep4}
+                    className="bg-blue-600 hover:bg-blue-500 text-white font-semibold px-6 gap-2"
+                  >
+                    <span>Next: Projects & Experience</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </Button>
+                </div>
+              </section>
+            )}
+
+            {/* STEP 5: PROJECTS & EXPERIENCE */}
+            {currentStep === 5 && (
+              <section aria-labelledby="step5-heading" className="space-y-6">
+                <div className="border-b border-slate-800 pb-4">
+                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-950/60 border border-blue-800/60 text-blue-300 text-xs font-semibold mb-2">
+                    <FolderGit2 className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>Hands-On Building</span>
+                  </div>
+                  <h2 id="step5-heading" className="text-xl font-bold text-white">
+                    Step 5: Projects & Experience
+                  </h2>
+                  <p className="text-xs text-slate-400 mt-1">
+                    Share a project or experiment you worked on — or tell us what you dream of building if you are just getting started!
+                  </p>
+                </div>
+
+                <div className="space-y-5">
+                  {PROJECT_QUESTIONS.map((q, idx) => (
+                    <FormField
+                      key={q.id}
+                      control={form.control}
+                      name={q.id}
+                      render={({ field }) => (
+                        <FormItem className="space-y-1.5 p-4 rounded-xl bg-slate-950/40 border border-slate-800/80">
+                          <FormLabel className="text-slate-200 text-sm font-semibold">
+                            {idx + 1}. {q.label} {q.required && "*"}
+                          </FormLabel>
+                          {q.helperText && (
+                            <p className="text-[11px] text-slate-400">{q.helperText}</p>
+                          )}
+                          <FormControl>
+                            {q.type === "single-choice" ? (
+                              <div className="space-y-2 pt-1">
+                                {q.options?.map((opt) => (
+                                  <label
+                                    key={opt}
+                                    className={`flex items-center gap-2.5 p-2.5 rounded-lg border text-xs cursor-pointer transition-colors ${
+                                      field.value === opt
+                                        ? "bg-blue-950/40 border-blue-500/60 text-blue-200"
+                                        : "bg-slate-900/40 border-slate-800 text-slate-300 hover:border-slate-700"
+                                    }`}
+                                  >
+                                    <input
+                                      type="radio"
+                                      name={q.id}
+                                      value={opt}
+                                      checked={field.value === opt}
+                                      onChange={() => field.onChange(opt)}
+                                      className="border-slate-700 bg-slate-950 text-blue-600 focus:ring-blue-500"
+                                    />
+                                    <span>{opt}</span>
+                                  </label>
+                                ))}
+                              </div>
+                            ) : q.type === "short-text" ? (
+                              <Input
+                                {...field}
+                                placeholder={q.placeholder || "Your answer..."}
+                                className="bg-slate-950 border-slate-800 focus-visible:ring-blue-500 text-sm"
+                              />
+                            ) : (
+                              <Textarea
+                                {...field}
+                                rows={4}
+                                placeholder={q.placeholder || "Describe the project, challenges, and technologies used..."}
+                                className="bg-slate-950 border-slate-800 focus-visible:ring-blue-500 text-sm leading-relaxed"
+                              />
+                            )}
+                          </FormControl>
+                          <FormMessage className="text-red-400 text-xs" />
+                        </FormItem>
+                      )}
+                    />
+                  ))}
+                </div>
+
+                <div className="pt-6 border-t border-slate-800 flex items-center justify-between">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setCurrentStep(4)}
+                    className="border-slate-800 text-slate-300 hover:bg-slate-800 gap-2"
+                  >
+                    <ArrowLeft className="w-4 h-4" />
+                    <span>Back</span>
+                  </Button>
+                  <Button
+                    type="button"
+                    onClick={validateStep5}
+                    className="bg-blue-600 hover:bg-blue-500 text-white font-semibold px-6 gap-2"
+                  >
                     <span>Next: Review & Confirm</span>
                     <ArrowRight className="w-4 h-4" />
                   </Button>
@@ -1113,21 +1585,56 @@ const FormComp = ({ dept1, dept2, isLoading, setIsLoading }) => {
               </section>
             )}
 
-            {/* STEP 4: PRE-SUBMISSION REVIEW */}
-            {currentStep === 4 && (
-              <section aria-labelledby="step4-heading" className="space-y-6">
+            {/* STEP 6: FINAL REFLECTION, PRE-FLIGHT CHECK & REVIEW */}
+            {currentStep === 6 && (
+              <section aria-labelledby="step6-heading" className="space-y-6">
                 <div className="border-b border-slate-800 pb-4">
-                  <h2 id="step4-heading" className="text-xl font-bold text-slate-100">
-                    Step 4: Review & Final Confirmation
+                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-950/60 border border-blue-800/60 text-blue-300 text-xs font-semibold mb-2">
+                    <CheckSquare className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>Final Review</span>
+                  </div>
+                  <h2 id="step6-heading" className="text-xl font-bold text-white">
+                    Step 6: Review & Final Confirmation
                   </h2>
                   <p className="text-xs text-slate-400 mt-1">
-                    Please review your submission carefully before sending. You can jump back to edit any section.
+                    Review your application responses carefully. You can jump back to any previous section using the edit buttons.
                   </p>
                 </div>
 
-                {/* Pre-Flight Quality Check Assistant */}
+                {/* Final Reflection Questions */}
+                <div className="space-y-4 p-5 rounded-2xl bg-slate-950/50 border border-slate-800">
+                  <div className="flex items-center gap-2 pb-1 border-b border-slate-800">
+                    <Sparkles className="w-4 h-4 text-amber-400" />
+                    <h3 className="text-sm font-bold text-white">One Last Thing (Optional)</h3>
+                  </div>
+
+                  {REFLECTION_QUESTIONS.map((q) => (
+                    <FormField
+                      key={q.id}
+                      control={form.control}
+                      name={q.id}
+                      render={({ field }) => (
+                        <FormItem className="space-y-1">
+                          <FormLabel className="text-slate-300 text-xs font-semibold">
+                            {q.label}
+                          </FormLabel>
+                          <FormControl>
+                            <Textarea
+                              {...field}
+                              rows={3}
+                              placeholder={q.placeholder || "Share any final thoughts..."}
+                              className="bg-slate-950 border-slate-800 focus-visible:ring-blue-500 text-xs leading-relaxed"
+                            />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+                  ))}
+                </div>
+
+                {/* Smart Pre-Flight Quality Check */}
                 <div
-                  className={`p-4 rounded-xl border space-y-3 ${
+                  className={`p-4 rounded-2xl border space-y-3 ${
                     preFlightAnalysis.health === "ready"
                       ? "bg-emerald-950/20 border-emerald-800/40"
                       : preFlightAnalysis.health === "review_suggested"
@@ -1146,7 +1653,7 @@ const FormComp = ({ dept1, dept2, isLoading, setIsLoading }) => {
                             : "text-red-400"
                         }`}
                       />
-                      <span className="text-xs font-bold text-slate-200">
+                      <span className="text-xs font-bold text-white">
                         Smart Pre-Flight Quality Check
                       </span>
                     </div>
@@ -1201,12 +1708,13 @@ const FormComp = ({ dept1, dept2, isLoading, setIsLoading }) => {
                   )}
                 </div>
 
-                {/* Personal Details Summary */}
+                {/* Section Review Blocks with Jump Links */}
+                {/* 1. Personal Information Summary */}
                 <div className="p-4 rounded-xl bg-slate-950/60 border border-slate-800 space-y-3">
                   <div className="flex items-center justify-between border-b border-slate-800/80 pb-2">
                     <h3 className="text-sm font-bold text-slate-200 flex items-center gap-2">
                       <User className="w-4 h-4 text-blue-400" />
-                      <span>Personal Information</span>
+                      <span>1. Personal Information</span>
                     </h3>
                     <Button
                       type="button"
@@ -1216,7 +1724,7 @@ const FormComp = ({ dept1, dept2, isLoading, setIsLoading }) => {
                       className="text-xs text-blue-400 hover:text-blue-300 hover:bg-blue-950/40 h-7 gap-1"
                     >
                       <Edit3 className="w-3.5 h-3.5" />
-                      <span>Edit</span>
+                      <span>Edit Step 1</span>
                     </Button>
                   </div>
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
@@ -1239,12 +1747,12 @@ const FormComp = ({ dept1, dept2, isLoading, setIsLoading }) => {
                   </div>
                 </div>
 
-                {/* General Motivation Summary */}
+                {/* 2. Why GDG Summary */}
                 <div className="p-4 rounded-xl bg-slate-950/60 border border-slate-800 space-y-2">
                   <div className="flex items-center justify-between border-b border-slate-800/80 pb-2">
                     <h3 className="text-sm font-bold text-slate-200 flex items-center gap-2">
-                      <FileText className="w-4 h-4 text-blue-400" />
-                      <span>General Motivation Statement</span>
+                      <Heart className="w-4 h-4 text-red-400" />
+                      <span>2. Why GDG? Responses</span>
                     </h3>
                     <Button
                       type="button"
@@ -1254,15 +1762,25 @@ const FormComp = ({ dept1, dept2, isLoading, setIsLoading }) => {
                       className="text-xs text-blue-400 hover:text-blue-300 hover:bg-blue-950/40 h-7 gap-1"
                     >
                       <Edit3 className="w-3.5 h-3.5" />
-                      <span>Edit</span>
+                      <span>Edit Step 2</span>
                     </Button>
                   </div>
-                  <p className="text-xs text-slate-300 leading-relaxed italic bg-slate-900/50 p-3 rounded border border-slate-800/50">
-                    &ldquo;{form.getValues("Why do you want to join Organization Name?") || "No answer provided."}&rdquo;
-                  </p>
+                  <div className="space-y-2">
+                    {WHY_GDG_QUESTIONS.map((q) => {
+                      const answer = form.getValues(q.id);
+                      return (
+                        <div key={q.id} className="p-2.5 rounded-lg bg-slate-900/40 border border-slate-800/40 text-xs">
+                          <span className="font-medium text-slate-300 block">{q.label}</span>
+                          <span className="text-slate-400 block mt-1 leading-relaxed">
+                            {answer ? String(answer) : <span className="text-slate-600 italic">Not answered</span>}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
 
-                {/* Department Answers Summary */}
+                {/* 3. Department Questions Summary */}
                 {departmentNames.map((deptName) => {
                   const questions = deptQuestionsMap[deptName] || [];
 
@@ -1270,28 +1788,28 @@ const FormComp = ({ dept1, dept2, isLoading, setIsLoading }) => {
                     <div key={deptName} className="p-4 rounded-xl bg-slate-950/60 border border-slate-800 space-y-3">
                       <div className="flex items-center justify-between border-b border-slate-800/80 pb-2">
                         <h3 className="text-sm font-bold text-slate-200 flex items-center gap-2">
-                          <Layers className="w-4 h-4 text-blue-400" />
-                          <span>{deptName} Questions</span>
+                          <Layers className="w-4 h-4 text-purple-400" />
+                          <span>4. {deptName} Questionnaire</span>
                         </h3>
                         <Button
                           type="button"
                           size="sm"
                           variant="ghost"
-                          onClick={() => setCurrentStep(3)}
+                          onClick={() => setCurrentStep(4)}
                           className="text-xs text-blue-400 hover:text-blue-300 hover:bg-blue-950/40 h-7 gap-1"
                         >
                           <Edit3 className="w-3.5 h-3.5" />
-                          <span>Edit</span>
+                          <span>Edit Step 4</span>
                         </Button>
                       </div>
 
                       <div className="space-y-2">
                         {questions.map((q, idx) => {
-                          const answer = form.getValues(q.name);
+                          const answer = form.getValues(q.id) || form.getValues(q.name);
                           return (
-                            <div key={idx} className="p-2.5 rounded bg-slate-900/40 border border-slate-800/40 text-xs">
-                              <span className="font-medium text-slate-300 block">{q.name}</span>
-                              <span className="text-slate-400 block mt-1">
+                            <div key={idx} className="p-2.5 rounded-lg bg-slate-900/40 border border-slate-800/40 text-xs">
+                              <span className="font-medium text-slate-300 block">{q.label}</span>
+                              <span className="text-slate-400 block mt-1 leading-relaxed">
                                 {answer ? String(answer) : <span className="text-slate-600 italic">Not answered</span>}
                               </span>
                             </div>
@@ -1303,16 +1821,16 @@ const FormComp = ({ dept1, dept2, isLoading, setIsLoading }) => {
                 })}
 
                 {/* Submission Pledge */}
-                <div className="p-4 rounded-xl bg-blue-950/20 border border-blue-900/40 flex items-start gap-3">
+                <div className="p-4 rounded-2xl bg-blue-950/30 border border-blue-900/40 flex items-start gap-3">
                   <input
                     type="checkbox"
                     id="pledge"
                     checked={confirmedPledge}
                     onChange={(e) => setConfirmedPledge(e.target.checked)}
-                    className="mt-1 rounded border-slate-700 bg-slate-900 text-blue-600 focus:ring-blue-500"
+                    className="mt-1 rounded border-slate-700 bg-slate-950 text-blue-600 focus:ring-blue-500"
                   />
-                  <label htmlFor="pledge" className="text-xs text-slate-300 cursor-pointer select-none">
-                    I confirm that all responses submitted are accurate and written by me. I understand that I can apply for a maximum of 2 departments.
+                  <label htmlFor="pledge" className="text-xs text-slate-300 cursor-pointer select-none leading-relaxed">
+                    I confirm that all responses submitted are authentic and written by me. I understand that I can apply for a maximum of 2 technical departments for GDG on Campus · VIT Chennai.
                   </label>
                 </div>
 
@@ -1320,12 +1838,12 @@ const FormComp = ({ dept1, dept2, isLoading, setIsLoading }) => {
                   <Button
                     type="button"
                     variant="outline"
-                    onClick={() => setCurrentStep(3)}
+                    onClick={() => setCurrentStep(5)}
                     disabled={isSubmitting}
                     className="border-slate-800 text-slate-300 hover:bg-slate-800 gap-2"
                   >
                     <ArrowLeft className="w-4 h-4" />
-                    <span>Back to Questions</span>
+                    <span>Back to Projects</span>
                   </Button>
                   <Button
                     type="submit"
@@ -1355,4 +1873,3 @@ const FormComp = ({ dept1, dept2, isLoading, setIsLoading }) => {
 };
 
 export default FormComp;
-
