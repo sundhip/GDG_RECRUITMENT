@@ -57,21 +57,38 @@ export default function UserButton({ user }) {
       <DropdownMenuContent align="end" className="w-56 bg-slate-900 border-slate-800 text-slate-200">
         <DropdownMenuLabel className="font-normal">
           <div className="flex flex-col space-y-1">
-            <p className="text-sm font-medium leading-none text-slate-100">{user.name || "Applicant"}</p>
-            <p className="text-xs leading-none text-slate-400 truncate">{user.email}</p>
-            {isAdmin && (
-              <span className="inline-flex items-center gap-1 text-[10px] text-blue-400 font-semibold mt-1">
-                <Shield className="w-3 h-3" /> Administrator
+            {isAdmin ? (
+              <span className="inline-flex items-center gap-1 text-[10px] text-purple-400 font-semibold mt-1">
+                <Shield className="w-3 h-3" /> GDG Staff Admin
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1 text-[10px] text-emerald-400 font-semibold mt-1">
+                <User className="w-3 h-3" /> Candidate
               </span>
             )}
           </div>
         </DropdownMenuLabel>
         <DropdownMenuSeparator className="bg-slate-800" />
         <DropdownMenuItem
-          onClick={handleSignOut}
-          className="text-red-400 focus:text-red-300 focus:bg-red-950/40 cursor-pointer flex items-center gap-2"
+          onClick={() => router.push("/passport")}
+          className="text-slate-300 focus:text-white focus:bg-slate-800 cursor-pointer flex items-center gap-2 text-xs"
         >
-          <LogOut className="w-4 h-4" />
+          <Shield className="w-3.5 h-3.5 text-emerald-400" />
+          <span>My Passport</span>
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          onClick={() => router.push("/admin")}
+          className="text-slate-300 focus:text-white focus:bg-slate-800 cursor-pointer flex items-center gap-2 text-xs"
+        >
+          <Shield className="w-3.5 h-3.5 text-purple-400" />
+          <span>Admin Console</span>
+        </DropdownMenuItem>
+        <DropdownMenuSeparator className="bg-slate-800" />
+        <DropdownMenuItem
+          onClick={handleSignOut}
+          className="text-red-400 focus:text-red-300 focus:bg-red-950/40 cursor-pointer flex items-center gap-2 text-xs"
+        >
+          <LogOut className="w-3.5 h-3.5" />
           <span>Sign Out</span>
         </DropdownMenuItem>
       </DropdownMenuContent>

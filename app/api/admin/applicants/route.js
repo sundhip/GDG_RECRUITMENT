@@ -28,6 +28,11 @@ function toApplicantSummary(applicant) {
     Pref: applicant.Pref || applicant.pref || "",
     shortlisted: Boolean(applicant.shortlisted),
     status: applicant.status || (applicant.shortlisted ? "shortlisted" : "submitted"),
+    currentPhase: applicant.currentPhase ?? (applicant.shortlisted ? 4 : (applicant.phase ?? 1)),
+    phaseName: applicant.phaseName || (applicant.currentPhase === 6 ? "Selected" : applicant.currentPhase >= 4 || applicant.shortlisted ? "Interview" : applicant.currentPhase === 3 ? "Domain Review" : applicant.currentPhase === 2 ? "Screening" : "Applied"),
+    scores: applicant.scores || {},
+    rubric: applicant.rubric || {},
+    interviewSlot: applicant.interviewSlot || null,
     responseCount: applicant.responseCount || (Array.isArray(applicant.answers) ? applicant.answers.length : 0),
     createdAt: applicant.createdAt,
     updatedAt: applicant.updatedAt,
@@ -61,6 +66,7 @@ export async function GET(req) {
     const limit = Math.min(100, Math.max(1, parseInt(searchParams.get("limit") || "50", 10)));
     const department = searchParams.get("department") || "";
     const shortlistedParam = searchParams.get("shortlisted");
+    const phaseParam = searchParams.get("phase");
     const searchQuery = (searchParams.get("search") || "").toLowerCase().trim();
     const isFullRequested = searchParams.get("full") === "true";
     const isPaginated = searchParams.has("page") || searchParams.has("limit");
@@ -84,6 +90,14 @@ export async function GET(req) {
       const serialized = serializeFirestoreData(doc.data());
       return normalizeSubmission({ id: doc.id, _id: doc.id, ...serialized });
     });
+
+    // Server-side filtering by phase if specified
+    if (phaseParam) {
+      const targetPhase = parseInt(phaseParam, 10);
+      if (!isNaN(targetPhase)) {
+        allDocs = allDocs.filter((app) => (app.currentPhase ?? 1) === targetPhase);
+      }
+    }
 
     // Server-side search filter across Name, Email, RegNo
     if (searchQuery) {

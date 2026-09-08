@@ -69,20 +69,22 @@ const NavBar = () => {
             </Link>
           )}
 
-          {isAuthenticated && isAdmin && (
+          {isAuthenticated && (
             <Link
               href="/admin"
               className={"flex items-center gap-1.5 text-xs sm:text-sm font-medium px-3 py-1.5 rounded-xl transition-all focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none " + (
-                pathname === "/admin"
-                  ? "bg-purple-600/15 text-purple-400 border border-purple-500/30 shadow-sm"
+                pathname.startsWith("/admin")
+                  ? "bg-purple-600/20 text-purple-300 border border-purple-500/40 shadow-sm"
                   : "text-slate-300 hover:text-white hover:bg-slate-800/60"
               )}
             >
               <LayoutDashboard className="w-4 h-4 text-purple-400" />
-              <span>Admin Panel</span>
-              <span className="text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.2 rounded bg-purple-600/30 text-purple-300 border border-purple-500/30">
-                Staff
-              </span>
+              <span>Admin Portal</span>
+              {isAdmin && (
+                <span className="text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.2 rounded bg-purple-600/30 text-purple-300 border border-purple-500/30">
+                  Staff
+                </span>
+              )}
             </Link>
           )}
 

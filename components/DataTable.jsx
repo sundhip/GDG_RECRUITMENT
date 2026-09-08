@@ -257,6 +257,31 @@ const DataTable = ({ data = [] }) => {
         ),
       },
       {
+        Header: "Recruitment Phase",
+        accessor: "currentPhase",
+        Cell: ({ row }) => {
+          const p = row.original.currentPhase || (row.original.shortlisted ? 4 : 1);
+          const badgeClass =
+            p === 6
+              ? "bg-emerald-950 text-emerald-300 border-emerald-700"
+              : p === 5
+              ? "bg-pink-950 text-pink-300 border-pink-700"
+              : p === 4
+              ? "bg-purple-950 text-purple-300 border-purple-700"
+              : p === 3
+              ? "bg-indigo-950 text-indigo-300 border-indigo-700"
+              : p === 2
+              ? "bg-amber-950 text-amber-300 border-amber-700"
+              : "bg-blue-950 text-blue-300 border-blue-700";
+
+          return (
+            <span className={`inline-flex px-2 py-0.5 rounded-full text-[11px] font-bold border ${badgeClass}`}>
+              Phase {p}
+            </span>
+          );
+        },
+      },
+      {
         Header: "Review Status",
         accessor: "shortlisted",
         Cell: ({ row }) => {

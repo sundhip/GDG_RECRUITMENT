@@ -53,7 +53,7 @@ export async function PATCH(req, { params }) {
       );
     }
 
-    const { valid, shortlisted, errors } = validateShortlistInput(rawBody);
+    const { valid, shortlisted, currentPhase, status, scores, rubric, interviewSlot, errors } = validateShortlistInput(rawBody);
     if (!valid) {
       return NextResponse.json(
         { success: false, error: "Bad Request", message: errors.join(", ") },
@@ -75,9 +75,38 @@ export async function PATCH(req, { params }) {
     // 5. Explicit whitelist update payload (Mass Assignment Prevention)
     const updatePayload = {
       shortlisted,
-      status: shortlisted ? "shortlisted" : "submitted",
+      status: status || (shortlisted ? "shortlisted" : (currentPhase ? `phase_${currentPhase}` : "submitted")),
       updatedAt: new Date(),
     };
+
+    if (currentPhase !== undefined) {
+      updatePayload.currentPhase = currentPhase;
+      updatePayload.phase = currentPhase;
+      updatePayload.phaseName =
+        currentPhase === 6
+          ? "Final Selection"
+          : currentPhase === 5
+          ? "Lead & Culture Fit (R2)"
+          : currentPhase === 4
+          ? "Technical Interview (R1)"
+          : currentPhase === 3
+          ? "Domain Review"
+          : currentPhase === 2
+          ? "Screening"
+          : "Application Received";
+    }
+
+    if (scores !== undefined) {
+      updatePayload.scores = scores;
+    }
+
+    if (rubric !== undefined) {
+      updatePayload.rubric = rubric;
+    }
+
+    if (interviewSlot !== undefined) {
+      updatePayload.interviewSlot = interviewSlot;
+    }
 
     await docRef.update(updatePayload);
     const updatedSnapshot = await docRef.get();

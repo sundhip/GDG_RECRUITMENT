@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { authClient } from "@/lib/auth-client";
 import { Button } from "@/components/ui/button";
 import VerifiedQR from "@/components/VerifiedQR";
+import { RECRUITMENT_PHASES } from "@/lib/admin-auth";
 import {
   ShieldCheck,
   CheckCircle2,
@@ -22,6 +23,7 @@ import {
   ExternalLink,
   Award,
   AlertCircle,
+  Calendar,
 } from "lucide-react";
 
 export default function PassportPage() {
@@ -45,7 +47,7 @@ export default function PassportPage() {
       try {
         setLoading(true);
         setError("");
-        const res = await fetch(`/api/get-submissions?email=${encodeURIComponent(user.email)}`);
+        const res = await fetch("/api/get-submissions?email=" + encodeURIComponent(user.email));
         if (!res.ok) {
           throw new Error("Failed to load your application passport.");
         }
@@ -95,14 +97,14 @@ export default function PassportPage() {
         <div className="space-y-2">
           <h1 className="text-2xl font-bold text-slate-100">Sign in to Access Your Passport</h1>
           <p className="text-xs text-slate-400 leading-relaxed">
-            Your Application Passport provides verified digital receipts, real-time review updates, and interview status tracking.
+            Your Application Passport provides verified digital receipts, real-time 6-phase review updates, and interview status tracking.
           </p>
         </div>
         <Button
           onClick={() => router.push("/auth/signin")}
           className="w-full bg-blue-600 hover:bg-blue-500 text-white font-semibold py-2.5 rounded-xl shadow-lg shadow-blue-900/30"
         >
-          Sign In with Email
+          Sign In with Email or Google
         </Button>
       </main>
     );
@@ -117,7 +119,7 @@ export default function PassportPage() {
 
   return (
     <div className="min-h-screen pb-20">
-      <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+      <main className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
         {/* 1. Header & Print Action */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800 pb-6 print:hidden">
           <div className="space-y-1">
@@ -132,7 +134,7 @@ export default function PassportPage() {
               Application Passport
             </h1>
             <p className="text-xs sm:text-sm text-slate-400">
-              Verified record of your technical recruitment submissions and live evaluation status.
+              Verified record of your GDG technical recruitment submissions and live 6-phase recruitment pipeline status.
             </p>
           </div>
 
@@ -142,7 +144,7 @@ export default function PassportPage() {
                 variant="outline"
                 size="sm"
                 onClick={handlePrint}
-                className="border-slate-700 bg-slate-900/60 hover:bg-slate-800 text-slate-200 text-xs gap-1.5 h-9"
+                className="border-slate-700 bg-slate-900/60 hover:bg-slate-800 text-slate-200 text-xs gap-1.5 h-9 rounded-xl"
               >
                 <Printer className="w-3.5 h-3.5" />
                 <span>Print Official Passport</span>
@@ -152,7 +154,7 @@ export default function PassportPage() {
               <Link href="/departments">
                 <Button
                   size="sm"
-                  className="bg-blue-600 hover:bg-blue-500 text-white text-xs gap-1.5 h-9 shadow-md"
+                  className="bg-blue-600 hover:bg-blue-500 text-white text-xs gap-1.5 h-9 rounded-xl shadow-md"
                 >
                   <Compass className="w-3.5 h-3.5" />
                   <span>Apply ({submissions.length}/2)</span>
@@ -165,7 +167,7 @@ export default function PassportPage() {
         {/* 2. Applicant Profile Card */}
         <section
           aria-labelledby="applicant-profile-heading"
-          className="p-6 rounded-2xl bg-gradient-to-r from-slate-900/90 via-slate-900/60 to-slate-950/90 border border-slate-800 shadow-xl relative overflow-hidden"
+          className="p-6 rounded-3xl bg-gradient-to-r from-slate-900/90 via-slate-900/60 to-slate-950/90 border border-slate-800 shadow-xl relative overflow-hidden"
         >
           <div className="absolute top-0 right-0 w-64 h-64 bg-blue-600/5 rounded-full blur-3xl pointer-events-none" />
 
@@ -181,23 +183,23 @@ export default function PassportPage() {
                   </h2>
                   <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-950/80 border border-emerald-800 text-emerald-300">
                     <ShieldCheck className="w-3 h-3" />
-                    Verified
+                    Verified Candidate
                   </span>
                 </div>
                 <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-400 font-mono">
                   <span className="flex items-center gap-1">
-                    <Mail className="w-3 h-3 text-slate-500" />
+                    <Mail className="w-3.5 h-3.5 text-slate-500" />
                     {user.email}
                   </span>
                   {primaryApplicant.registrationNumber && primaryApplicant.registrationNumber !== "—" && (
                     <span className="flex items-center gap-1">
-                      <Hash className="w-3 h-3 text-slate-500" />
+                      <Hash className="w-3.5 h-3.5 text-slate-500" />
                       {primaryApplicant.registrationNumber}
                     </span>
                   )}
                   {primaryApplicant.phone && primaryApplicant.phone !== "—" && (
                     <span className="flex items-center gap-1">
-                      <Phone className="w-3 h-3 text-slate-500" />
+                      <Phone className="w-3.5 h-3.5 text-slate-500" />
                       {primaryApplicant.phone}
                     </span>
                   )}
@@ -216,7 +218,7 @@ export default function PassportPage() {
 
         {/* 3. Submissions / Passport Cards */}
         {submissions.length === 0 ? (
-          <section className="p-12 rounded-2xl bg-slate-900/30 border border-slate-800/60 text-center space-y-4">
+          <section className="p-12 rounded-3xl bg-slate-900/30 border border-slate-800/60 text-center space-y-4">
             <div className="w-14 h-14 rounded-2xl bg-slate-800/60 flex items-center justify-center mx-auto text-slate-400">
               <Compass className="w-7 h-7" />
             </div>
@@ -240,14 +242,15 @@ export default function PassportPage() {
                 <Award className="w-4 h-4 text-blue-400" />
                 <span>Submitted Applications ({submissions.length})</span>
               </h2>
-              <span className="text-xs text-slate-500">Live Status Feed</span>
+              <span className="text-xs text-slate-500">Live 6-Phase Pipeline Feed</span>
             </div>
 
-            <div className="space-y-5">
+            <div className="space-y-6">
               {submissions.map((sub, index) => {
-                const subId = sub.submissionId || sub.id || `sub_${index}`;
+                const subId = sub.submissionId || sub.id || "sub_" + index;
                 const isExpanded = Boolean(expandedReceipts[subId]);
-                const isShortlisted = Boolean(sub.shortlisted);
+                const currentPhase = sub.currentPhase || (sub.shortlisted ? 4 : 1);
+                const isShortlisted = Boolean(sub.shortlisted || currentPhase >= 4);
                 const deptName = sub.departmentName || sub.Department || "Technical Department";
                 const createdDate = sub.createdAt
                   ? new Date(sub.createdAt).toLocaleDateString("en-US", {
@@ -262,22 +265,27 @@ export default function PassportPage() {
                 return (
                   <article
                     key={subId}
-                    className="p-6 rounded-2xl bg-slate-900/60 border border-slate-800 hover:border-slate-700/80 transition-all shadow-xl space-y-6"
+                    className="p-6 sm:p-8 rounded-3xl bg-slate-900/60 border border-slate-800 hover:border-slate-700/80 transition-all shadow-xl space-y-6"
                   >
                     {/* Top Row: Department info & Status pill */}
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                      <div className="space-y-1">
-                        <div className="flex items-center gap-2.5">
-                          <h3 className="text-lg font-bold text-slate-100">{deptName}</h3>
-                          {isShortlisted ? (
-                            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-950/90 text-emerald-300 border border-emerald-700 shadow-sm animate-pulse">
-                              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
-                              Shortlisted for Interview
+                      <div className="space-y-1.5">
+                        <div className="flex flex-wrap items-center gap-2.5">
+                          <h3 className="text-lg sm:text-xl font-bold text-slate-100">{deptName}</h3>
+                          {currentPhase === 6 ? (
+                            <span className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-xs font-bold bg-emerald-950 text-emerald-300 border border-emerald-600 shadow-sm animate-pulse">
+                              <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
+                              Selected for GDG Core Team
+                            </span>
+                          ) : currentPhase >= 4 ? (
+                            <span className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-xs font-bold bg-purple-950 text-purple-300 border border-purple-700 shadow-sm animate-pulse">
+                              <CheckCircle2 className="w-3.5 h-3.5 text-purple-400" />
+                              Shortlisted for Interview (Phase {currentPhase})
                             </span>
                           ) : (
-                            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-950/80 text-amber-300 border border-amber-800">
+                            <span className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-xs font-semibold bg-amber-950/80 text-amber-300 border border-amber-800">
                               <Clock className="w-3.5 h-3.5 text-amber-400" />
-                              Under Technical Review
+                              Under Technical Review (Phase {currentPhase})
                             </span>
                           )}
                         </div>
@@ -299,77 +307,71 @@ export default function PassportPage() {
                           </div>
                         </div>
                         <VerifiedQR
-                          text={`passport:verify:${subId}`}
+                          text={"passport:verify:" + subId}
                           size={70}
                           className="shrink-0"
                         />
                       </div>
                     </div>
 
-                    {/* Stage Tracker */}
-                    <div className="p-4 rounded-xl bg-slate-950/60 border border-slate-800/80">
-                      <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-3">
-                        Review Lifecycle
+                    {/* 6-Phase Stage Tracker */}
+                    <div className="p-5 rounded-2xl bg-slate-950/60 border border-slate-800/80 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                          Recruitment Progress (Phase {currentPhase} of 6)
+                        </div>
+                        <span className="text-xs font-mono font-bold text-blue-400">
+                          {Math.round((currentPhase / 6) * 100)}% Complete
+                        </span>
                       </div>
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                        {/* Step 1: Received */}
-                        <div className="flex items-center gap-3 p-2.5 rounded-lg bg-emerald-950/40 border border-emerald-800/40">
-                          <div className="w-6 h-6 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0">
-                            <CheckCircle2 className="w-4 h-4" />
-                          </div>
-                          <div>
-                            <div className="text-xs font-bold text-emerald-300">1. Received</div>
-                            <div className="text-[10px] text-slate-400">Responses saved securely</div>
-                          </div>
-                        </div>
 
-                        {/* Step 2: Evaluation */}
-                        <div className="flex items-center gap-3 p-2.5 rounded-lg bg-blue-950/40 border border-blue-800/40">
-                          <div className="w-6 h-6 rounded-full bg-blue-500/20 text-blue-400 flex items-center justify-center shrink-0">
-                            <span className="w-2 h-2 rounded-full bg-blue-400 animate-pulse" />
-                          </div>
-                          <div>
-                            <div className="text-xs font-bold text-blue-300">2. Evaluation</div>
-                            <div className="text-[10px] text-slate-400">Reviewers assessing fit</div>
-                          </div>
-                        </div>
-
-                        {/* Step 3: Decision */}
+                      {/* Progress Bar */}
+                      <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
                         <div
-                          className={`flex items-center gap-3 p-2.5 rounded-lg border ${
-                            isShortlisted
-                              ? "bg-emerald-950/40 border-emerald-800/40"
-                              : "bg-slate-900/40 border-slate-800/40 opacity-70"
-                          }`}
-                        >
-                          <div
-                            className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 ${
-                              isShortlisted
-                                ? "bg-emerald-500/20 text-emerald-400"
-                                : "bg-slate-800 text-slate-500"
-                            }`}
-                          >
-                            {isShortlisted ? (
-                              <Sparkles className="w-3.5 h-3.5" />
-                            ) : (
-                              <Clock className="w-3.5 h-3.5" />
-                            )}
-                          </div>
-                          <div>
+                          className="bg-gradient-to-r from-blue-500 via-indigo-500 to-emerald-400 h-full transition-all duration-500"
+                          style={{ width: (currentPhase / 6) * 100 + "%" }}
+                        />
+                      </div>
+
+                      {/* 6-Phase Cards Grid */}
+                      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 pt-2">
+                        {RECRUITMENT_PHASES.map((p) => {
+                          const isCompleted = currentPhase > p.phase;
+                          const isCurrent = currentPhase === p.phase;
+
+                          return (
                             <div
-                              className={`text-xs font-bold ${
-                                isShortlisted ? "text-emerald-300" : "text-slate-400"
-                              }`}
+                              key={p.phase}
+                              className={"p-2.5 rounded-xl border transition-all " + (
+                                isCompleted
+                                  ? "bg-emerald-950/30 border-emerald-800/40"
+                                  : isCurrent
+                                  ? "bg-blue-950/40 border-blue-600 shadow-md ring-1 ring-blue-500/50"
+                                  : "bg-slate-900/30 border-slate-800/40 opacity-50"
+                              )}
                             >
-                              3. {isShortlisted ? "Interview Invite" : "Final Decision"}
+                              <div className="flex items-center justify-between mb-1">
+                                <span className="text-[10px] font-bold text-slate-400">
+                                  {p.phase}.
+                                </span>
+                                {isCompleted ? (
+                                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                                ) : isCurrent ? (
+                                  <span className="w-2 h-2 rounded-full bg-blue-400 animate-pulse" />
+                                ) : null}
+                              </div>
+                              <div className={"text-[11px] font-bold truncate " + (
+                                isCompleted
+                                  ? "text-emerald-300"
+                                  : isCurrent
+                                  ? "text-blue-300"
+                                  : "text-slate-400"
+                              )}>
+                                {p.shortName}
+                              </div>
                             </div>
-                            <div className="text-[10px] text-slate-400">
-                              {isShortlisted
-                                ? "Check email for interview slots"
-                                : "Pending review completion"}
-                            </div>
-                          </div>
-                        </div>
+                          );
+                        })}
                       </div>
                     </div>
 
@@ -380,65 +382,37 @@ export default function PassportPage() {
                         variant="ghost"
                         size="sm"
                         onClick={() => toggleExpand(subId)}
-                        className="text-xs text-slate-300 hover:text-slate-100 hover:bg-slate-800/60 gap-1.5 h-8 px-2.5"
+                        className="text-xs text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 gap-1.5 h-8 px-2"
                       >
+                        <span>{isExpanded ? "Hide Submitted Responses" : "View Submitted Responses"}</span>
                         {isExpanded ? (
-                          <>
-                            <ChevronUp className="w-3.5 h-3.5" />
-                            <span>Hide Submitted Questionnaire Answers</span>
-                          </>
+                          <ChevronUp className="w-3.5 h-3.5" />
                         ) : (
-                          <>
-                            <ChevronDown className="w-3.5 h-3.5" />
-                            <span>View Submitted Questionnaire Answers ({sub.answers?.length || 0})</span>
-                          </>
+                          <ChevronDown className="w-3.5 h-3.5" />
                         )}
                       </Button>
 
                       <span className="text-[11px] text-slate-500 font-mono">
-                        Schema v{sub.schemaVersion || 2}
+                        {sub.answers?.length || 0} Questions Recorded
                       </span>
                     </div>
 
-                    {/* Expanded Answers Inspector */}
+                    {/* Expanded Response Drawer */}
                     {isExpanded && (
-                      <div className="p-4 rounded-xl bg-slate-950/80 border border-slate-800 space-y-3 animate-in fade-in duration-200">
-                        <div className="text-xs font-bold text-slate-300 border-b border-slate-800/80 pb-2">
-                          Your Recorded Answers
-                        </div>
-                        {Array.isArray(sub.answers) && sub.answers.length > 0 ? (
-                          <div className="space-y-3">
-                            {sub.answers.map((ans, aIdx) => (
-                              <div
-                                key={ans.questionId || aIdx}
-                                className="p-3 rounded-lg bg-slate-900/60 border border-slate-800/60 text-xs space-y-1"
-                              >
-                                <div className="font-semibold text-slate-200">
-                                  {ans.questionText || `Question ${aIdx + 1}`}
-                                </div>
-                                <div className="text-slate-300 whitespace-pre-wrap leading-relaxed">
-                                  {ans.value || <span className="text-slate-600 italic">No answer provided</span>}
-                                </div>
-                              </div>
-                            ))}
+                      <div className="pt-2 border-t border-slate-800/60 space-y-3">
+                        {(sub.answers || []).map((ans, aIdx) => (
+                          <div
+                            key={ans.questionId || aIdx}
+                            className="p-3.5 rounded-xl bg-slate-950/60 border border-slate-800/80 space-y-1.5"
+                          >
+                            <div className="text-[11px] font-bold text-slate-300">
+                              {ans.questionText || ans.questionId}
+                            </div>
+                            <p className="text-xs text-slate-400 leading-relaxed whitespace-pre-wrap">
+                              {String(ans.value || "") || <span className="italic text-slate-600">No answer recorded</span>}
+                            </p>
                           </div>
-                        ) : sub.Questions && typeof sub.Questions === "object" ? (
-                          <div className="space-y-3">
-                            {Object.entries(sub.Questions).map(([q, a], qIdx) => (
-                              <div
-                                key={qIdx}
-                                className="p-3 rounded-lg bg-slate-900/60 border border-slate-800/60 text-xs space-y-1"
-                              >
-                                <div className="font-semibold text-slate-200">{q}</div>
-                                <div className="text-slate-300 whitespace-pre-wrap leading-relaxed">
-                                  {String(a)}
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        ) : (
-                          <p className="text-xs text-slate-500 italic">No answers recorded.</p>
-                        )}
+                        ))}
                       </div>
                     )}
                   </article>

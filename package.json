@@ -9,7 +9,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "test": "node scripts/verify-phase1.mjs && node scripts/verify-phase2-security.mjs && node scripts/verify-phase3-perf.mjs && node scripts/verify-phase4-ux.mjs && node scripts/verify-phase5-innovation.mjs && node scripts/verify-phase6-backend-audit.mjs"
+    "test": "node scripts/verify-phase1.mjs && node scripts/verify-phase2-security.mjs && node scripts/verify-phase3-perf.mjs && node scripts/verify-phase4-ux.mjs && node scripts/verify-phase5-innovation.mjs && node scripts/verify-phase6-backend-audit.mjs && node scripts/verify-phases-and-admin.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.0",
