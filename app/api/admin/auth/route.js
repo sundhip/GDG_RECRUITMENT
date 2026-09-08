@@ -42,10 +42,10 @@ export async function POST(req) {
       // Empty body allowed
     }
 
-    const { passkey } = body || {};
+    const { passkey, email: inputEmail, name: inputName } = body || {};
 
     const isPasskeyValid = passkey && verifyAdminPasskey(passkey);
-    const isEmailWhitelisted = user?.email && isWhitelistedAdminEmail(user.email);
+    const isEmailWhitelisted = (user?.email && isWhitelistedAdminEmail(user.email)) || (inputEmail && isWhitelistedAdminEmail(inputEmail));
 
     if (!isPasskeyValid && !isEmailWhitelisted) {
       return NextResponse.json(
@@ -60,8 +60,8 @@ export async function POST(req) {
 
     const elevatedUser = {
       id: user?.id || "admin_" + Date.now(),
-      name: user?.name || "GDG Recruitment Lead",
-      email: user?.email || "admin@gdg.org",
+      name: user?.name || inputName || "GDG Recruitment Lead",
+      email: user?.email || inputEmail || "admin@gdg.org",
       role: "admin",
       image: user?.image || null,
       adminElevatedAt: new Date().toISOString(),

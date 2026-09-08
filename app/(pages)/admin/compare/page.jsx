@@ -172,7 +172,7 @@ export default function CandidateComparisonPage() {
   if (!isAdmin) {
     return (
       <main className="max-w-md mx-auto px-4 py-20 text-center space-y-6">
-        <div className="w-16 h-16 rounded-2xl bg-red-600/10 border border-red-500/20 text-red-400 flex items-center justify-center mx-auto">
+        <div className="w-16 h-16 rounded-2xl bg-purple-600/10 border border-purple-500/20 text-purple-400 flex items-center justify-center mx-auto">
           <Lock className="w-8 h-8" />
         </div>
         <div className="space-y-2">
@@ -181,11 +181,18 @@ export default function CandidateComparisonPage() {
             Candidate comparison is restricted to verified administrative staff.
           </p>
         </div>
-        <Link href="/admin">
-          <Button variant="outline" className="border-slate-700 text-slate-300">
-            Return to Admin Panel
-          </Button>
-        </Link>
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+          <Link href="/admin/login?redirect=/admin/compare">
+            <Button className="bg-purple-600 hover:bg-purple-500 text-white text-xs">
+              Staff Portal Login &rarr;
+            </Button>
+          </Link>
+          <Link href="/passport">
+            <Button variant="outline" className="border-slate-700 text-slate-300 text-xs">
+              Candidate Passport
+            </Button>
+          </Link>
+        </div>
       </main>
     );
   }

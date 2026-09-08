@@ -15,25 +15,11 @@ export const dynamic = "force-dynamic";
 export default async function AdminPage() {
   const reqHeaders = await headers();
   const user = await getSessionUser(reqHeaders);
+  const isAdmin = Boolean(user && (user.role === "admin" || isWhitelistedAdminEmail(user.email)));
 
-  // 1. Server-side redirect for unauthenticated users
-  if (!user) {
-    redirect("/auth/signin");
-  }
-
-  const isAdmin = Boolean(user.role === "admin" || isWhitelistedAdminEmail(user.email));
-
-  // 2. Access Control: If not yet admin, render AdminContent with zero PII so passkey can be entered
-  if (!isAdmin) {
-    return (
-      <div className="min-h-screen flex flex-col bg-background text-foreground">
-        <NavBar />
-        <main className="flex-1 max-w-4xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-12 flex items-center justify-center">
-          <AdminContent applicants={[]} isAdmin={false} user={user} />
-        </main>
-        <Footer />
-      </div>
-    );
+  // 1. Server-side redirect to separate staff login portal if unauthenticated or not an admin
+  if (!user || !isAdmin) {
+    redirect("/admin/login");
   }
 
   // 3. Authenticated Admin: safely query Firestore and render table & pipeline
