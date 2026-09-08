@@ -122,8 +122,8 @@ const FormComp = ({ dept1, dept2, isLoading, setIsLoading }) => {
         .string()
         .min(1, "Registration number is required")
         .regex(
-          /^\d{2}[A-Z]{3}\d{4}$/,
-          "Registration number format must be e.g. 25BCE5612 (2 numbers, 3 uppercase letters, 4 numbers)"
+          /^(23|24|25|26)[a-zA-Z]{3}\d{3,5}$/,
+          "Registration number must start with year 23-26 followed by 3 branch letters and 3-5 digits (e.g. 25BCE1328, 25EEE1562, 26ECE176)"
         ),
       Email: z.string(),
       Phone: z
@@ -828,12 +828,12 @@ const FormComp = ({ dept1, dept2, isLoading, setIsLoading }) => {
                         <FormControl>
                           <Input
                             {...field}
-                            placeholder="e.g. 25BCE5612"
+                            placeholder="e.g. 25BCE1328, 25EEE1562, 26ECE176"
                             className="bg-slate-950 border-slate-800 focus-visible:ring-blue-500 uppercase font-mono"
                           />
                         </FormControl>
                         <FormDescription className="text-[11px] text-slate-400">
-                          Format: 2 digits, 3 letters, 4 digits (e.g. 25BCE5612)
+                          Format: Year (23-26), 3 letters, 3-5 digits (e.g. 25BCE1328, 25EEE1562, 26ECE176)
                         </FormDescription>
                         <FormMessage className="text-red-400 text-xs" />
                       </FormItem>

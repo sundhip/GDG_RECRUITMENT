@@ -170,16 +170,34 @@ console.log("\nTEST 6: Server-Side Input Validation");
   assert(deptResult.valid === false, "Unknown department rejected");
   assert(deptResult.errors.some(e => e.includes("Unknown or invalid department")), "Appropriate error message for invalid department");
 
-  // 2. Invalid registration number rejection
+  // 2. Invalid registration number rejection (out-of-bounds year, invalid length)
   const invalidRegPayload = {
     Name: "Test User",
-    RegistrationNumber: "invalid_reg_format",
+    RegistrationNumber: "22BCE1234", // Year < 23
     Phone: "9876543210",
     Department: "339f0f8a-72f2-44b9-92ab-2b0d4dcfa0f6",
     Answers: {},
   };
   const regResult = validateSubmissionInput(invalidRegPayload, sessionEmail);
-  assert(regResult.valid === false, "Invalid registration number rejected");
+  assert(regResult.valid === false, "Registration number with year < 23 (22BCE1234) rejected");
+
+  const invalidRegPayload27 = {
+    Name: "Test User",
+    RegistrationNumber: "27BCE1234", // Year > 26
+    Phone: "9876543210",
+    Department: "339f0f8a-72f2-44b9-92ab-2b0d4dcfa0f6",
+    Answers: {},
+  };
+  assert(validateSubmissionInput(invalidRegPayload27, sessionEmail).valid === false, "Registration number with year > 26 (27BCE1234) rejected");
+
+  // Direct validateRegistrationNumber tests
+  assert(validateRegistrationNumber("25BCE1328") === true, "Valid 25BCE1328 accepted");
+  assert(validateRegistrationNumber("25EEE1562") === true, "Valid 25EEE1562 accepted");
+  assert(validateRegistrationNumber("26ECE176") === true, "Valid 26ECE176 accepted");
+  assert(validateRegistrationNumber("23BCS1001") === true, "Valid 23BCS1001 accepted");
+  assert(validateRegistrationNumber("24BIT5678") === true, "Valid 24BIT5678 accepted");
+  assert(validateRegistrationNumber("22BCE1234") === false, "Year 22 rejected");
+  assert(validateRegistrationNumber("27ECE176") === false, "Year 27 rejected");
 
   // 3. Invalid phone number rejection
   const invalidPhonePayload = {
@@ -195,14 +213,14 @@ console.log("\nTEST 6: Server-Side Input Validation");
   // 4. Valid inputs accepted
   const validPayload = {
     Name: "Valid Applicant",
-    RegistrationNumber: "25BCE5612",
+    RegistrationNumber: "25BCE1328",
     Phone: "+919876543210",
     Department: "339f0f8a-72f2-44b9-92ab-2b0d4dcfa0f6",
     Answers: { q_app_01: "Answer text" },
   };
   const validResult = validateSubmissionInput(validPayload, sessionEmail);
   assert(validResult.valid === true, "Valid applicant payload accepted");
-  assert(validResult.sanitizedData.RegistrationNumber === "25BCE5612", "Registration number properly formatted");
+  assert(validResult.sanitizedData.RegistrationNumber === "25BCE1328", "Registration number properly formatted");
 }
 
 // -------------------------------------------------------------

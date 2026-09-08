@@ -78,14 +78,27 @@ console.log('\nTEST 1: Real-Time Derived Progress Indicator Calculation');
 // TEST 2: Stepper Wizard State Machine & Input Validation Rules
 console.log('\nTEST 2: Stepper Wizard State Machine & Input Validation Rules');
 {
-  const regNoRegex = /^\d{2}[A-Z]{3}\d{4}$/;
+  const regNoRegex = /^(23|24|25|26)[A-Z]{3}\d{3,5}$/i;
   const phoneRegex = /^\d{10}$/;
 
-  assert.equal(regNoRegex.test('25BCE5612'), true);
-  assert.equal(regNoRegex.test('25bce5612'), false);
-  assert.equal(regNoRegex.test('25BCE561'), false);
-  assert.equal(regNoRegex.test('2BCE5612'), false);
-  console.log('  ✓ PASS: Registration Number format strictly enforces 2 numbers, 3 uppercase letters, 4 numbers');
+  // Valid branch prefixes and varying digit lengths (23-26)
+  assert.equal(regNoRegex.test('25BCE1328'), true);
+  assert.equal(regNoRegex.test('25EEE1562'), true);
+  assert.equal(regNoRegex.test('26ECE176'), true);
+  assert.equal(regNoRegex.test('23BCS1001'), true);
+  assert.equal(regNoRegex.test('24BIT5678'), true);
+  assert.equal(regNoRegex.test('25bce1328'), true);
+
+  // Boundary years rejection (< 23 or > 26)
+  assert.equal(regNoRegex.test('22BCE1234'), false);
+  assert.equal(regNoRegex.test('27BCE1234'), false);
+  assert.equal(regNoRegex.test('20BCE1234'), false);
+
+  // Malformed branch or length rejection
+  assert.equal(regNoRegex.test('25BC1328'), false);
+  assert.equal(regNoRegex.test('25BCEE1328'), false);
+  assert.equal(regNoRegex.test('25BCE1'), false);
+  console.log('  ✓ PASS: Registration Number format strictly enforces years 23-26, 3 branch letters, and 3-5 digits');
 
   assert.equal(phoneRegex.test('9876543210'), true);
   assert.equal(phoneRegex.test('+919876543210'), false);
