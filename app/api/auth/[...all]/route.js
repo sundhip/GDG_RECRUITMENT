@@ -1,3 +1,4 @@
+import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { createSessionToken, verifySessionToken } from "@/lib/session-helper";
 
@@ -27,7 +28,7 @@ export async function GET(request) {
 
     if (error || !code) {
       console.error("Google OAuth error parameter:", error);
-      return Response.redirect(new URL("/auth/signin?error=google_oauth_declined", request.url), 302);
+      return NextResponse.redirect(new URL("/auth/signin?error=google_oauth_declined", request.url));
     }
 
     try {
@@ -47,7 +48,7 @@ export async function GET(request) {
       const tokenData = await tokenRes.json();
       if (!tokenRes.ok || !tokenData.access_token) {
         console.error("Failed to exchange code for token:", tokenData);
-        return Response.redirect(new URL("/auth/signin?error=token_exchange_failed", request.url), 302);
+        return NextResponse.redirect(new URL("/auth/signin?error=token_exchange_failed", request.url));
       }
 
       const profileRes = await fetch("https://www.googleapis.com/oauth2/v2/userinfo", {
@@ -56,7 +57,7 @@ export async function GET(request) {
       const profile = await profileRes.json();
 
       if (!profile || !profile.email) {
-        return Response.redirect(new URL("/auth/signin?error=profile_fetch_failed", request.url), 302);
+        return NextResponse.redirect(new URL("/auth/signin?error=profile_fetch_failed", request.url));
       }
 
       const user = {
@@ -70,18 +71,25 @@ export async function GET(request) {
       const sessionToken = createSessionToken(user);
 
       const targetUrl = new URL(state.startsWith("/") ? state : "/", request.url);
-      const response = Response.redirect(targetUrl, 302);
+      const response = NextResponse.redirect(targetUrl);
 
-      const cookieValue = "session_token=" + sessionToken + "; Path=/; HttpOnly; SameSite=Lax; Max-Age=604800";
-      const betterAuthCookie = "better-auth.session_token=" + sessionToken + "; Path=/; HttpOnly; SameSite=Lax; Max-Age=604800";
-
-      response.headers.append("Set-Cookie", cookieValue);
-      response.headers.append("Set-Cookie", betterAuthCookie);
+      response.cookies.set("session_token", sessionToken, {
+        path: "/",
+        httpOnly: true,
+        sameSite: "lax",
+        maxAge: 604800,
+      });
+      response.cookies.set("better-auth.session_token", sessionToken, {
+        path: "/",
+        httpOnly: true,
+        sameSite: "lax",
+        maxAge: 604800,
+      });
 
       return response;
     } catch (err) {
       console.error("Google OAuth callback exception:", err);
-      return Response.redirect(new URL("/auth/signin?error=oauth_internal_error", request.url), 302);
+      return NextResponse.redirect(new URL("/auth/signin?error=oauth_internal_error", request.url));
     }
   }
 
@@ -94,7 +102,7 @@ export async function GET(request) {
     if (token) {
       const user = verifySessionToken(token);
       if (user) {
-        return Response.json({
+        return NextResponse.json({
           user,
           session: {
             id: user.id,
@@ -108,11 +116,11 @@ export async function GET(request) {
     try {
       const session = await auth.api.getSession({ headers: request.headers });
       if (session?.user) {
-        return Response.json(session);
+        return NextResponse.json(session);
       }
     } catch (e) {}
 
-    return Response.json(null);
+    return NextResponse.json(null);
   }
 
   // Pass through to Better-Auth handler
@@ -139,7 +147,7 @@ export async function POST(request) {
       encodeURIComponent(callbackURL) +
       "&access_type=offline&prompt=consent";
 
-    return Response.json({ url: googleAuthUrl });
+    return NextResponse.json({ url: googleAuthUrl });
   }
 
   // 2. Email Sign In
@@ -150,7 +158,7 @@ export async function POST(request) {
       const password = body.password || "";
 
       if (!email || !password) {
-        return Response.json({ message: "Email and password are required" }, { status: 400 });
+        return NextResponse.json({ message: "Email and password are required" }, { status: 400 });
       }
 
       const user = {
@@ -162,14 +170,24 @@ export async function POST(request) {
       };
 
       const sessionToken = createSessionToken(user);
-      const res = Response.json({ user, success: true });
+      const res = NextResponse.json({ user, success: true });
 
-      res.headers.append("Set-Cookie", "session_token=" + sessionToken + "; Path=/; HttpOnly; SameSite=Lax; Max-Age=604800");
-      res.headers.append("Set-Cookie", "better-auth.session_token=" + sessionToken + "; Path=/; HttpOnly; SameSite=Lax; Max-Age=604800");
+      res.cookies.set("session_token", sessionToken, {
+        path: "/",
+        httpOnly: true,
+        sameSite: "lax",
+        maxAge: 604800,
+      });
+      res.cookies.set("better-auth.session_token", sessionToken, {
+        path: "/",
+        httpOnly: true,
+        sameSite: "lax",
+        maxAge: 604800,
+      });
 
       return res;
     } catch (err) {
-      return Response.json({ message: err.message || "Sign in failed" }, { status: 500 });
+      return NextResponse.json({ message: err.message || "Sign in failed" }, { status: 500 });
     }
   }
 
@@ -182,7 +200,7 @@ export async function POST(request) {
       const password = body.password || "";
 
       if (!email || !password) {
-        return Response.json({ message: "Email and password are required" }, { status: 400 });
+        return NextResponse.json({ message: "Email and password are required" }, { status: 400 });
       }
 
       const user = {
@@ -194,22 +212,32 @@ export async function POST(request) {
       };
 
       const sessionToken = createSessionToken(user);
-      const res = Response.json({ user, success: true });
+      const res = NextResponse.json({ user, success: true });
 
-      res.headers.append("Set-Cookie", "session_token=" + sessionToken + "; Path=/; HttpOnly; SameSite=Lax; Max-Age=604800");
-      res.headers.append("Set-Cookie", "better-auth.session_token=" + sessionToken + "; Path=/; HttpOnly; SameSite=Lax; Max-Age=604800");
+      res.cookies.set("session_token", sessionToken, {
+        path: "/",
+        httpOnly: true,
+        sameSite: "lax",
+        maxAge: 604800,
+      });
+      res.cookies.set("better-auth.session_token", sessionToken, {
+        path: "/",
+        httpOnly: true,
+        sameSite: "lax",
+        maxAge: 604800,
+      });
 
       return res;
     } catch (err) {
-      return Response.json({ message: err.message || "Sign up failed" }, { status: 500 });
+      return NextResponse.json({ message: err.message || "Sign up failed" }, { status: 500 });
     }
   }
 
   // 4. Sign Out
   if (pathname.includes("/sign-out")) {
-    const res = Response.json({ success: true });
-    res.headers.append("Set-Cookie", "session_token=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0");
-    res.headers.append("Set-Cookie", "better-auth.session_token=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0");
+    const res = NextResponse.json({ success: true });
+    res.cookies.set("session_token", "", { path: "/", httpOnly: true, sameSite: "lax", maxAge: 0 });
+    res.cookies.set("better-auth.session_token", "", { path: "/", httpOnly: true, sameSite: "lax", maxAge: 0 });
     return res;
   }
 

@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import React, { useEffect, useState, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,10 +22,15 @@ import {
   EyeOff,
   ShieldCheck,
   Loader2,
+  AlertCircle,
+  X,
 } from "lucide-react";
 
-export default function SignInPage() {
+function SignInContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const errorParam = searchParams.get("error");
+
   const { data: session, isPending } = authClient.useSession();
 
   const [mode, setMode] = useState("signin"); // "signin" | "signup"
@@ -34,6 +39,22 @@ export default function SignInPage() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
+
+  useEffect(() => {
+    if (errorParam) {
+      let msg = "Google authentication could not be completed. Please try again or use email sign-in.";
+      if (errorParam === "google_oauth_declined") {
+        msg = "Google sign-in was cancelled or access was declined.";
+      } else if (errorParam === "token_exchange_failed") {
+        msg = "Google token exchange failed. Please try again or sign in with your email below.";
+      } else if (errorParam === "profile_fetch_failed") {
+        msg = "Unable to retrieve your Google profile. Please try again.";
+      }
+      setErrorMessage(msg);
+      toast.error(msg);
+    }
+  }, [errorParam]);
 
   useEffect(() => {
     if (session?.user && !isPending) {
@@ -150,6 +171,21 @@ export default function SignInPage() {
                   : "Create your candidate profile to apply for technical departments."}
               </p>
             </div>
+
+            {/* Error Feedback Banner */}
+            {errorMessage && (
+              <div className="flex items-start gap-2.5 p-3 rounded-2xl bg-red-950/40 border border-red-800/60 text-red-200 text-xs animate-in fade-in slide-in-from-top-1">
+                <AlertCircle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
+                <div className="flex-1 leading-relaxed">{errorMessage}</div>
+                <button
+                  type="button"
+                  onClick={() => setErrorMessage("")}
+                  className="text-red-400 hover:text-red-200 transition-colors"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            )}
 
             {/* Google Sign In Button */}
             <div className="flex flex-col gap-2">
@@ -328,5 +364,13 @@ export default function SignInPage() {
         <p>© 2026 Google Developer Groups (GDG) · Recruitment Portal System</p>
       </footer>
     </div>
+  );
+}
+
+export default function SignInPage() {
+  return (
+    <Suspense fallback={<DWASFWLoader />}>
+      <SignInContent />
+    </Suspense>
   );
 }
